@@ -58,7 +58,8 @@ export type Tool =
   | 'power_plant'
   | 'water_tower'
   | 'stadium'
-  | 'airport';
+  | 'airport'
+  | 'space_program';
 
 export interface ToolInfo {
   name: string;

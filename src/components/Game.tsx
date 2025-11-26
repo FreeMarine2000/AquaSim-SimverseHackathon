@@ -1476,7 +1476,10 @@ function CanvasIsometricGrid({ overlayMode, selectedTile, setSelectedTile }: {
       const baseY = isMultiTile ? drawPosY : y;
       const footprintDepth = isMultiTile ? buildingSize.width + buildingSize.height - 2 : 0;
       const verticalLift = footprintDepth > 0 ? footprintDepth * h * 0.3 : 0;
-      const drawY = baseY - imgHeight + h + imgHeight * 0.1 - verticalLift;
+      let drawY = baseY - imgHeight + h + imgHeight * 0.1 - verticalLift;
+      if (buildingType === 'power_plant') {
+        drawY += h * 0.35; // Lower the sprite slightly to sit closer to the ground
+      }
       
       // Draw with crisp rendering
       ctx.drawImage(
