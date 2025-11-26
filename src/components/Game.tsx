@@ -1642,10 +1642,10 @@ function CanvasIsometricGrid({ overlayMode, selectedTile, setSelectedTile }: {
     return false;
   }
   
-  // Helper function to check if a tile is part of a building that needs parking lot (stadium, hospital, power_plant, industrial, space_program)
+  // Helper function to check if a tile is part of a building that needs parking lot (stadium, hospital, power_plant, industrial, commercial, space_program)
   function isPartOfParkingLotBuilding(gridX: number, gridY: number): boolean {
     const maxSize = 4; // Maximum building size (airport is 4x4)
-    const parkingLotBuildings: BuildingType[] = ['stadium', 'hospital', 'power_plant', 'space_program', 'factory_small', 'factory_medium', 'factory_large', 'warehouse'];
+    const parkingLotBuildings: BuildingType[] = ['stadium', 'hospital', 'power_plant', 'space_program', 'factory_small', 'factory_medium', 'factory_large', 'warehouse', 'shop_small', 'shop_medium', 'office_low', 'office_high', 'mall'];
     
     for (let dy = 0; dy < maxSize; dy++) {
       for (let dx = 0; dx < maxSize; dx++) {
@@ -1693,11 +1693,13 @@ function CanvasIsometricGrid({ overlayMode, selectedTile, setSelectedTile }: {
     const isPartOfBuilding = tile.building.type === 'empty' && isPartOfMultiTileBuilding(tile.x, tile.y);
     const isBuilding = isDirectBuilding || isPartOfBuilding;
     
-    // Check if this tile is part of a parking lot building (stadium, hospital, power_plant, space_program, industrial)
+    // Check if this tile is part of a parking lot building (stadium, hospital, power_plant, space_program, industrial, commercial)
     const isParkingLot = (tile.building.type === 'stadium' || tile.building.type === 'hospital' || tile.building.type === 'power_plant' ||
                           tile.building.type === 'space_program' ||
                           tile.building.type === 'factory_small' || tile.building.type === 'factory_medium' || 
-                          tile.building.type === 'factory_large' || tile.building.type === 'warehouse') ||
+                          tile.building.type === 'factory_large' || tile.building.type === 'warehouse' ||
+                          tile.building.type === 'shop_small' || tile.building.type === 'shop_medium' ||
+                          tile.building.type === 'office_low' || tile.building.type === 'office_high' || tile.building.type === 'mall') ||
                          (tile.building.type === 'empty' && isPartOfParkingLotBuilding(tile.x, tile.y));
     
     if (tile.building.type === 'water') {
