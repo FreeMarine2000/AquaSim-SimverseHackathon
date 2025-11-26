@@ -1460,7 +1460,7 @@ function CanvasIsometricGrid({ overlayMode, selectedTile, setSelectedTile }: {
           y <= Math.max(dragStartTile.y, dragEndTile.y);
         
         // Draw base tile
-        drawIsometricTile(ctx, screenX, screenY, tile, !!(isHovered || isSelected || isInDragRect));
+        drawIsometricTile(ctx, screenX, screenY, tile, !!(isHovered || isSelected || isInDragRect), zoom);
         
         const isBuilding = tile.building.type !== 'grass' && tile.building.type !== 'empty';
         if (isBuilding) {
@@ -1608,7 +1608,7 @@ function CanvasIsometricGrid({ overlayMode, selectedTile, setSelectedTile }: {
   }
   
   // Draw isometric tile base
-  function drawIsometricTile(ctx: CanvasRenderingContext2D, x: number, y: number, tile: Tile, highlight: boolean) {
+  function drawIsometricTile(ctx: CanvasRenderingContext2D, x: number, y: number, tile: Tile, highlight: boolean, currentZoom: number) {
     const w = TILE_WIDTH;
     const h = TILE_HEIGHT;
     
@@ -1709,10 +1709,12 @@ function CanvasIsometricGrid({ overlayMode, selectedTile, setSelectedTile }: {
     ctx.closePath();
     ctx.fill();
     
-    // Draw grid lines (always)
-    ctx.strokeStyle = strokeColor;
-    ctx.lineWidth = 0.5;
-    ctx.stroke();
+    // Draw grid lines only when zoomed in (hide when zoom < 0.6)
+    if (currentZoom >= 0.6) {
+      ctx.strokeStyle = strokeColor;
+      ctx.lineWidth = 0.5;
+      ctx.stroke();
+    }
     
     // Draw zone border with dashed line
     if (tile.zone !== 'none') {
