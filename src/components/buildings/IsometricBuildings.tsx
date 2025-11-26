@@ -10,14 +10,19 @@ interface BuildingProps {
   onFire?: boolean;
 }
 
-// 60° top-down perspective configuration
-// For a steeper top-down view, we use a 3:1 width to height ratio
-// This creates a more overhead/bird's eye view
+// Isometric tile configuration
+// HEIGHT_RATIO controls the tile shape
+// 0.5 = standard isometric, higher = taller tiles (more top-down feel)
 const TILE_WIDTH = 64;
-const TILE_HEIGHT = 32; // 2:1 ratio for classic isometric
+const HEIGHT_RATIO = 0.65; // Taller tiles for more top-down view
+const TILE_HEIGHT = TILE_WIDTH * HEIGHT_RATIO;
 
-// Helper to create isometric points for a tile at ground level
-const getTilePoints = (w: number, h: number, yOffset: number = 0) => {
+// Helper to get tile height from width using the ratio
+const getTileHeight = (w: number) => w * HEIGHT_RATIO;
+
+// Helper to create isometric diamond points for a tile
+const getTilePoints = (w: number, yOffset: number = 0) => {
+  const h = getTileHeight(w);
   return `${w/2},${yOffset} ${w},${h/2 + yOffset} ${w/2},${h + yOffset} 0,${h/2 + yOffset}`;
 };
 
@@ -29,7 +34,7 @@ export const IsometricTile: React.FC<{
   zone?: ZoneType;
 }> = ({ color, size = TILE_WIDTH, highlight, zone }) => {
   const w = size;
-  const h = size / 2; // 2:1 ratio
+  const h = getTileHeight(w);
   
   const zoneColors: Record<ZoneType, string> = {
     residential: 'rgba(76, 175, 80, 0.4)',
@@ -41,14 +46,14 @@ export const IsometricTile: React.FC<{
   return (
     <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ display: 'block' }}>
       <polygon
-        points={getTilePoints(w, h)}
+        points={getTilePoints(w)}
         fill={zone && zone !== 'none' ? zoneColors[zone] : color}
         stroke={highlight ? '#fff' : 'rgba(0,0,0,0.3)'}
         strokeWidth={highlight ? 1.5 : 0.5}
       />
       {zone && zone !== 'none' && (
         <polygon
-          points={getTilePoints(w, h)}
+          points={getTilePoints(w)}
           fill="none"
           stroke={zone === 'residential' ? '#4CAF50' : zone === 'commercial' ? '#2196F3' : '#FFC107'}
           strokeWidth={1.5}
@@ -62,7 +67,7 @@ export const IsometricTile: React.FC<{
 // Grass tile - flat
 export const GrassTile: React.FC<BuildingProps> = ({ size = TILE_WIDTH }) => {
   const w = size;
-  const h = size / 2;
+  const h = getTileHeight(w);
   
   return (
     <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ display: 'block' }}>
@@ -73,7 +78,7 @@ export const GrassTile: React.FC<BuildingProps> = ({ size = TILE_WIDTH }) => {
         </linearGradient>
       </defs>
       <polygon
-        points={getTilePoints(w, h)}
+        points={getTilePoints(w)}
         fill={`url(#grassGrad-${size})`}
         stroke="#2d4a26"
         strokeWidth={0.5}
@@ -85,7 +90,7 @@ export const GrassTile: React.FC<BuildingProps> = ({ size = TILE_WIDTH }) => {
 // Water tile - flat with shimmer
 export const WaterTile: React.FC<BuildingProps> = ({ size = TILE_WIDTH }) => {
   const w = size;
-  const h = size / 2;
+  const h = getTileHeight(w);
   
   return (
     <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ display: 'block' }}>
@@ -97,7 +102,7 @@ export const WaterTile: React.FC<BuildingProps> = ({ size = TILE_WIDTH }) => {
         </linearGradient>
       </defs>
       <polygon
-        points={getTilePoints(w, h)}
+        points={getTilePoints(w)}
         fill={`url(#waterGrad-${size})`}
         stroke="#1e3a8a"
         strokeWidth={0.5}
@@ -111,7 +116,7 @@ export const WaterTile: React.FC<BuildingProps> = ({ size = TILE_WIDTH }) => {
 // Road tile - flat
 export const RoadTile: React.FC<BuildingProps> = ({ size = TILE_WIDTH }) => {
   const w = size;
-  const h = size / 2;
+  const h = getTileHeight(w);
   
   return (
     <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ display: 'block' }}>
@@ -135,7 +140,7 @@ export const RoadTile: React.FC<BuildingProps> = ({ size = TILE_WIDTH }) => {
 // Tree - small vertical element on tile
 export const TreeTile: React.FC<BuildingProps> = ({ size = TILE_WIDTH }) => {
   const w = size;
-  const h = size / 2;
+  const h = getTileHeight(w);
   const treeH = h * 0.8; // Tree height above ground
   const totalH = h + treeH;
   
@@ -197,7 +202,7 @@ const IsometricBox: React.FC<BoxProps> = ({ w, h, depth, topColor, leftColor, ri
 // Small house (residential level 1)
 export const SmallHouse: React.FC<BuildingProps> = ({ size = TILE_WIDTH, powered = true }) => {
   const w = size;
-  const h = size / 2;
+  const h = getTileHeight(w);
   const buildingH = h * 0.6;
   const roofH = h * 0.3;
   const totalH = h + buildingH + roofH;
@@ -224,7 +229,7 @@ export const SmallHouse: React.FC<BuildingProps> = ({ size = TILE_WIDTH, powered
 // Medium house (residential level 2)
 export const MediumHouse: React.FC<BuildingProps> = ({ size = TILE_WIDTH, powered = true }) => {
   const w = size;
-  const h = size / 2;
+  const h = getTileHeight(w);
   const buildingH = h * 0.8;
   const roofH = h * 0.35;
   const totalH = h + buildingH + roofH;
@@ -254,7 +259,7 @@ export const MediumHouse: React.FC<BuildingProps> = ({ size = TILE_WIDTH, powere
 // Apartment low (residential level 3)
 export const ApartmentLow: React.FC<BuildingProps> = ({ size = TILE_WIDTH, powered = true }) => {
   const w = size;
-  const h = size / 2;
+  const h = getTileHeight(w);
   const buildingH = h * 1.5;
   const totalH = h + buildingH;
   const groundY = buildingH;
@@ -283,7 +288,7 @@ export const ApartmentLow: React.FC<BuildingProps> = ({ size = TILE_WIDTH, power
 // Apartment high (residential level 4-5)
 export const ApartmentHigh: React.FC<BuildingProps> = ({ size = TILE_WIDTH, level = 4, powered = true }) => {
   const w = size;
-  const h = size / 2;
+  const h = getTileHeight(w);
   const floors = level === 5 ? 8 : 6;
   const buildingH = h * (0.3 * floors);
   const totalH = h + buildingH;
@@ -315,7 +320,7 @@ export const ApartmentHigh: React.FC<BuildingProps> = ({ size = TILE_WIDTH, leve
 // Small shop (commercial level 1)
 export const SmallShop: React.FC<BuildingProps> = ({ size = TILE_WIDTH, powered = true }) => {
   const w = size;
-  const h = size / 2;
+  const h = getTileHeight(w);
   const buildingH = h * 0.7;
   const totalH = h + buildingH;
   const groundY = buildingH;
@@ -340,7 +345,7 @@ export const SmallShop: React.FC<BuildingProps> = ({ size = TILE_WIDTH, powered 
 // Office low (commercial level 2-3)
 export const OfficeLow: React.FC<BuildingProps> = ({ size = TILE_WIDTH, powered = true }) => {
   const w = size;
-  const h = size / 2;
+  const h = getTileHeight(w);
   const buildingH = h * 1.2;
   const totalH = h + buildingH;
   const groundY = buildingH;
@@ -365,7 +370,7 @@ export const OfficeLow: React.FC<BuildingProps> = ({ size = TILE_WIDTH, powered 
 // Office high (commercial level 4-5)
 export const OfficeHigh: React.FC<BuildingProps> = ({ size = TILE_WIDTH, level = 4, powered = true }) => {
   const w = size;
-  const h = size / 2;
+  const h = getTileHeight(w);
   const floors = level === 5 ? 10 : 7;
   const buildingH = h * (0.25 * floors);
   const totalH = h + buildingH + 10;
@@ -395,7 +400,7 @@ export const OfficeHigh: React.FC<BuildingProps> = ({ size = TILE_WIDTH, level =
 // Factory small (industrial level 1)
 export const FactorySmall: React.FC<BuildingProps> = ({ size = TILE_WIDTH, powered = true }) => {
   const w = size;
-  const h = size / 2;
+  const h = getTileHeight(w);
   const buildingH = h * 0.8;
   const stackH = h * 0.6;
   const totalH = h + buildingH + stackH;
@@ -427,7 +432,7 @@ export const FactorySmall: React.FC<BuildingProps> = ({ size = TILE_WIDTH, power
 // Factory large (industrial level 3-5)
 export const FactoryLarge: React.FC<BuildingProps> = ({ size = TILE_WIDTH, level = 3, powered = true }) => {
   const w = size;
-  const h = size / 2;
+  const h = getTileHeight(w);
   const buildingH = h * 1.0;
   const stackH = h * 0.9;
   const stacks = level >= 4 ? 3 : 2;
@@ -466,7 +471,7 @@ export const FactoryLarge: React.FC<BuildingProps> = ({ size = TILE_WIDTH, level
 // Warehouse (industrial)
 export const Warehouse: React.FC<BuildingProps> = ({ size = TILE_WIDTH, powered = true }) => {
   const w = size;
-  const h = size / 2;
+  const h = getTileHeight(w);
   const buildingH = h * 0.6;
   const totalH = h + buildingH;
   const groundY = buildingH;
@@ -488,7 +493,7 @@ export const Warehouse: React.FC<BuildingProps> = ({ size = TILE_WIDTH, powered 
 // Power plant
 export const PowerPlant: React.FC<BuildingProps> = ({ size = TILE_WIDTH }) => {
   const w = size;
-  const h = size / 2;
+  const h = getTileHeight(w);
   const buildingH = h * 1.0;
   const towerH = h * 1.2;
   const totalH = h + buildingH + towerH * 0.5;
@@ -516,7 +521,7 @@ export const PowerPlant: React.FC<BuildingProps> = ({ size = TILE_WIDTH }) => {
 // Water tower
 export const WaterTower: React.FC<BuildingProps> = ({ size = TILE_WIDTH }) => {
   const w = size;
-  const h = size / 2;
+  const h = getTileHeight(w);
   const towerH = h * 1.4;
   const totalH = h + towerH;
   const groundY = towerH;
@@ -545,7 +550,7 @@ export const WaterTower: React.FC<BuildingProps> = ({ size = TILE_WIDTH }) => {
 // Police station
 export const PoliceStation: React.FC<BuildingProps> = ({ size = TILE_WIDTH }) => {
   const w = size;
-  const h = size / 2;
+  const h = getTileHeight(w);
   const buildingH = h * 0.9;
   const totalH = h + buildingH;
   const groundY = buildingH;
@@ -572,7 +577,7 @@ export const PoliceStation: React.FC<BuildingProps> = ({ size = TILE_WIDTH }) =>
 // Fire station
 export const FireStation: React.FC<BuildingProps> = ({ size = TILE_WIDTH }) => {
   const w = size;
-  const h = size / 2;
+  const h = getTileHeight(w);
   const buildingH = h * 0.9;
   const towerH = h * 0.5;
   const totalH = h + buildingH + towerH;
@@ -599,7 +604,7 @@ export const FireStation: React.FC<BuildingProps> = ({ size = TILE_WIDTH }) => {
 // Hospital
 export const Hospital: React.FC<BuildingProps> = ({ size = TILE_WIDTH }) => {
   const w = size;
-  const h = size / 2;
+  const h = getTileHeight(w);
   const buildingH = h * 1.4;
   const totalH = h + buildingH;
   const groundY = buildingH;
@@ -633,7 +638,7 @@ export const Hospital: React.FC<BuildingProps> = ({ size = TILE_WIDTH }) => {
 // School
 export const School: React.FC<BuildingProps> = ({ size = TILE_WIDTH }) => {
   const w = size;
-  const h = size / 2;
+  const h = getTileHeight(w);
   const buildingH = h * 0.85;
   const towerH = h * 0.5;
   const totalH = h + buildingH + towerH;
@@ -670,7 +675,7 @@ export const School: React.FC<BuildingProps> = ({ size = TILE_WIDTH }) => {
 // University
 export const University: React.FC<BuildingProps> = ({ size = TILE_WIDTH }) => {
   const w = size;
-  const h = size / 2;
+  const h = getTileHeight(w);
   const buildingH = h * 1.3;
   const domeH = h * 0.5;
   const totalH = h + buildingH + domeH;
@@ -709,7 +714,7 @@ export const University: React.FC<BuildingProps> = ({ size = TILE_WIDTH }) => {
 // Park
 export const Park: React.FC<BuildingProps> = ({ size = TILE_WIDTH }) => {
   const w = size;
-  const h = size / 2;
+  const h = getTileHeight(w);
   const treeH = h * 0.7;
   const totalH = h + treeH;
   const groundY = treeH;
@@ -748,7 +753,7 @@ export const Park: React.FC<BuildingProps> = ({ size = TILE_WIDTH }) => {
 // Mall
 export const Mall: React.FC<BuildingProps> = ({ size = TILE_WIDTH, powered = true }) => {
   const w = size;
-  const h = size / 2;
+  const h = getTileHeight(w);
   const buildingH = h * 1.1;
   const domeH = h * 0.3;
   const totalH = h + buildingH + domeH;
@@ -786,7 +791,7 @@ export const EmptyZonedTile: React.FC<{ zone: ZoneType; size?: number; highlight
 // Fire overlay
 const FireOverlay: React.FC<{ size: number }> = ({ size }) => {
   const w = size;
-  const h = size / 2;
+  const h = getTileHeight(w);
   return (
     <svg 
       width={w} 

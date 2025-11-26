@@ -48,10 +48,11 @@ import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-// Isometric tile dimensions - 2:1 ratio for classic isometric
-// Tiles are diamond-shaped with width twice their height
+// Isometric tile dimensions
+// HEIGHT_RATIO of 0.65 gives taller tiles (more top-down feel)
 const TILE_WIDTH = 64;
-const TILE_HEIGHT = 32;
+const HEIGHT_RATIO = 0.65;
+const TILE_HEIGHT = TILE_WIDTH * HEIGHT_RATIO;
 
 const EVENT_ICON_MAP: Record<string, React.ReactNode> = {
   fire: <FireIcon size={16} />,
