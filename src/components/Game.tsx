@@ -535,7 +535,7 @@ const TopBar = React.memo(function TopBar() {
               <span className="text-muted-foreground text-xs italic animate-pulse">Saving...</span>
             )}
           </div>
-          <div className="flex items-center gap-2 text-muted-foreground text-xs">
+          <div className="flex items-center gap-2 text-muted-foreground text-xs font-mono tabular-nums">
             <span>{monthNames[month - 1]} {year}</span>
             <span className="text-muted-foreground/50">•</span>
             <span className="flex items-center gap-1">
@@ -603,7 +603,7 @@ const TopBar = React.memo(function TopBar() {
             step={1}
             className="w-16"
           />
-          <span className="text-foreground text-xs font-mono w-8">{taxRate}%</span>
+          <span className="text-foreground text-xs font-mono tabular-nums w-8">{taxRate}%</span>
         </div>
       </div>
     </div>
@@ -620,9 +620,9 @@ function StatBadge({ value, label, variant = 'default' }: {
                      variant === 'destructive' ? 'text-red-500' : 'text-foreground';
   
   return (
-    <div className="flex flex-col items-start">
+    <div className="flex flex-col items-start min-w-[70px]">
       <div className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium mb-0.5">{label}</div>
-      <div className={`text-sm font-mono font-semibold ${colorClass}`}>{value}</div>
+      <div className={`text-sm font-mono tabular-nums font-semibold ${colorClass}`}>{value}</div>
     </div>
   );
 }
@@ -1074,19 +1074,19 @@ function StatisticsPanel() {
           <div className="grid grid-cols-4 gap-3">
             <Card className="p-3">
               <div className="text-muted-foreground text-xs mb-1">Population</div>
-              <div className="font-mono font-semibold text-green-400">{stats.population.toLocaleString()}</div>
+              <div className="font-mono tabular-nums font-semibold text-green-400">{stats.population.toLocaleString()}</div>
             </Card>
             <Card className="p-3">
               <div className="text-muted-foreground text-xs mb-1">Jobs</div>
-              <div className="font-mono font-semibold text-blue-400">{stats.jobs.toLocaleString()}</div>
+              <div className="font-mono tabular-nums font-semibold text-blue-400">{stats.jobs.toLocaleString()}</div>
             </Card>
             <Card className="p-3">
               <div className="text-muted-foreground text-xs mb-1">Treasury</div>
-              <div className="font-mono font-semibold text-amber-400">${stats.money.toLocaleString()}</div>
+              <div className="font-mono tabular-nums font-semibold text-amber-400">${stats.money.toLocaleString()}</div>
             </Card>
             <Card className="p-3">
               <div className="text-muted-foreground text-xs mb-1">Monthly</div>
-              <div className={`font-mono font-semibold ${stats.income - stats.expenses >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+              <div className={`font-mono tabular-nums font-semibold ${stats.income - stats.expenses >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                 ${(stats.income - stats.expenses).toLocaleString()}
               </div>
             </Card>

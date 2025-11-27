@@ -789,8 +789,8 @@ function evolveBuilding(grid: Tile[][], x: number, y: number, services: ServiceC
   // Progress construction if building is not yet complete
   // Construction requires power and water to progress
   if (building.constructionProgress !== undefined && building.constructionProgress < 100) {
-    // Construction progresses ~5-10% per tick, so buildings complete in 10-20 ticks
-    const constructionSpeed = 5 + Math.random() * 5;
+    // Construction speed scales with building size (larger buildings take longer)
+    const constructionSpeed = getConstructionSpeed(building.type);
     building.constructionProgress = Math.min(100, building.constructionProgress + constructionSpeed);
     
     // While under construction, buildings don't generate population or jobs
@@ -884,10 +884,10 @@ function evolveBuilding(grid: Tile[][], x: number, y: number, services: ServiceC
   const buildingStats = BUILDING_STATS[anchorBuilding.type];
   const efficiency = (anchorBuilding.powered ? 0.5 : 0) + (anchorBuilding.watered ? 0.5 : 0);
 
-  anchorBuilding.population = buildingStats.maxPop > 0
+  anchorBuilding.population = buildingStats?.maxPop > 0
     ? Math.floor(buildingStats.maxPop * Math.max(1, anchorBuilding.level) * efficiency * 0.8)
     : 0;
-  anchorBuilding.jobs = buildingStats.maxJobs > 0
+  anchorBuilding.jobs = buildingStats?.maxJobs > 0
     ? Math.floor(buildingStats.maxJobs * Math.max(1, anchorBuilding.level) * efficiency * 0.8)
     : 0;
 
@@ -1278,7 +1278,8 @@ export function simulateTick(state: GameState): GameState {
           !NO_CONSTRUCTION_TYPES.includes(tile.building.type)) {
         // Construction requires power and water to progress
         if (tile.building.powered && tile.building.watered) {
-          const constructionSpeed = 5 + Math.random() * 5;
+          // Construction speed scales with building size (larger buildings take longer)
+          const constructionSpeed = getConstructionSpeed(tile.building.type);
           tile.building.constructionProgress = Math.min(100, tile.building.constructionProgress + constructionSpeed);
         }
         // While under construction, service buildings don't provide coverage
@@ -1309,7 +1310,7 @@ export function simulateTick(state: GameState): GameState {
 
       // Update pollution from buildings
       const buildingStats = BUILDING_STATS[tile.building.type];
-      tile.pollution = Math.max(0, tile.pollution * 0.95 + buildingStats.pollution);
+      tile.pollution = Math.max(0, tile.pollution * 0.95 + buildingStats?.pollution || 0);
 
       // Fire simulation - fires progress slowly to allow fire trucks to respond
       if (state.disastersEnabled && tile.building.onFire) {
@@ -1464,6 +1465,22 @@ const BUILDING_SIZES: Partial<Record<BuildingType, { width: number; height: numb
 // Get the size of a building (how many tiles it spans)
 export function getBuildingSize(buildingType: BuildingType): { width: number; height: number } {
   return BUILDING_SIZES[buildingType] || { width: 1, height: 1 };
+}
+
+// Get construction speed for a building type (larger buildings take longer)
+// Returns percentage progress per tick
+function getConstructionSpeed(buildingType: BuildingType): number {
+  const size = getBuildingSize(buildingType);
+  const area = size.width * size.height;
+  
+  // Base speed: 5-10% per tick for 1x1 buildings (~10-20 ticks to complete)
+  // Scale down by sqrt of area so larger buildings take proportionally longer:
+  // - 1x1 (1 tile):  5-10% per tick → ~10-20 ticks
+  // - 2x2 (4 tiles): 2.5-5% per tick → ~20-40 ticks
+  // - 3x3 (9 tiles): 1.7-3.3% per tick → ~30-60 ticks
+  // - 4x4 (16 tiles): 1.25-2.5% per tick → ~40-80 ticks
+  const baseSpeed = 5 + Math.random() * 5;
+  return baseSpeed / Math.sqrt(area);
 }
 
 // Check if a multi-tile building can be placed at the given position
