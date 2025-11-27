@@ -453,7 +453,11 @@ const Sidebar = React.memo(function Sidebar() {
     'TOOLS': ['select', 'bulldoze', 'road', 'subway'] as Tool[],
     'ZONES': ['zone_residential', 'zone_commercial', 'zone_industrial', 'zone_dezone'] as Tool[],
     'SERVICES': ['police_station', 'fire_station', 'hospital', 'school', 'university'] as Tool[],
-    'PARKS': ['park', 'park_large', 'tennis'] as Tool[],
+    'PARKS': ['park', 'park_large', 'tennis', 'playground_small', 'playground_large', 'community_garden', 'pond_park', 'park_gate', 'greenhouse_garden'] as Tool[],
+    'SPORTS': ['basketball_courts', 'soccer_field_small', 'baseball_field_small', 'football_field', 'baseball_stadium', 'swimming_pool', 'skate_park', 'bleachers_field'] as Tool[],
+    'RECREATION': ['mini_golf_course', 'go_kart_track', 'amphitheater', 'roller_coaster_small', 'campground', 'cabin_house', 'mountain_lodge', 'mountain_trailhead'] as Tool[],
+    'WATERFRONT': ['marina_docks_small', 'pier_large'] as Tool[],
+    'COMMUNITY': ['community_center', 'animal_pens_farm', 'office_building_small'] as Tool[],
     'UTILITIES': ['power_plant', 'water_tower', 'subway_station'] as Tool[],
     'SPECIAL': ['stadium', 'museum', 'airport', 'space_program', 'city_hall', 'amusement_park'] as Tool[],
   }), []);
@@ -751,7 +755,13 @@ const MiniMap = React.memo(function MiniMap({ onNavigate, viewport }: {
           color = '#c084fc';
         } else if (tile.building.type === 'power_plant') color = '#f97316';
         else if (tile.building.type === 'water_tower') color = '#06b6d4';
-        else if (tile.building.type === 'park' || tile.building.type === 'park_large' || tile.building.type === 'tennis') color = '#84cc16';
+        else if (tile.building.type === 'park' || tile.building.type === 'park_large' || tile.building.type === 'tennis' ||
+          ['basketball_courts', 'playground_small', 'playground_large', 'baseball_field_small', 
+           'soccer_field_small', 'football_field', 'baseball_stadium', 'community_center',
+           'swimming_pool', 'skate_park', 'mini_golf_course', 'bleachers_field', 'go_kart_track',
+           'amphitheater', 'greenhouse_garden', 'animal_pens_farm', 'cabin_house', 'campground',
+           'marina_docks_small', 'pier_large', 'roller_coaster_small', 'community_garden',
+           'pond_park', 'park_gate', 'mountain_lodge', 'mountain_trailhead', 'office_building_small'].includes(tile.building.type)) color = '#84cc16';
         else if (tile.building.onFire) color = '#ef4444';
         
         ctx.fillStyle = color;
@@ -2117,7 +2127,13 @@ function CanvasIsometricGrid({ overlayMode, selectedTile, setSelectedTile, isMob
     const schoolTypes: BuildingType[] = ['school', 'university'];
     const commercialTypes: BuildingType[] = ['shop_small', 'shop_medium', 'office_low', 'office_high', 'mall'];
     const industrialTypes: BuildingType[] = ['factory_small', 'factory_medium', 'factory_large', 'warehouse'];
-    const parkTypes: BuildingType[] = ['park', 'park_large', 'tennis'];
+    const parkTypes: BuildingType[] = ['park', 'park_large', 'tennis', 
+      'basketball_courts', 'playground_small', 'playground_large', 'baseball_field_small',
+      'soccer_field_small', 'football_field', 'baseball_stadium', 'community_center',
+      'swimming_pool', 'skate_park', 'mini_golf_course', 'bleachers_field', 'go_kart_track',
+      'amphitheater', 'greenhouse_garden', 'animal_pens_farm', 'cabin_house', 'campground',
+      'marina_docks_small', 'pier_large', 'roller_coaster_small', 'community_garden',
+      'pond_park', 'park_gate', 'mountain_lodge', 'mountain_trailhead'];
     
     for (let y = 0; y < currentGridSize; y++) {
       for (let x = 0; x < currentGridSize; x++) {
@@ -3689,6 +3705,16 @@ function CanvasIsometricGrid({ overlayMode, selectedTile, setSelectedTile, isMob
     if (currentSpritePack.denseSrc) {
       imagesToLoad.push(loadSpriteImage(currentSpritePack.denseSrc, true));
     }
+    
+    // Also load parks sprite sheet if available
+    if (currentSpritePack.parksSrc) {
+      imagesToLoad.push(loadSpriteImage(currentSpritePack.parksSrc, true));
+    }
+    
+    // Also load parks construction sprite sheet if available
+    if (currentSpritePack.parksConstructionSrc) {
+      imagesToLoad.push(loadSpriteImage(currentSpritePack.parksConstructionSrc, true));
+    }
 
     Promise.all(imagesToLoad)
       .then(() => setImagesLoaded(true))
@@ -3781,10 +3807,13 @@ function CanvasIsometricGrid({ overlayMode, selectedTile, setSelectedTile, isMob
     return null;
   }, [grid, gridSize]);
   
-  // Helper function to check if a tile is part of a park building footprint
+// Helper function to check if a tile is part of a park building footprint
+  // Note: buildings with grey bases (baseball_stadium, swimming_pool, community_center, office_building_small) are NOT included
   const isPartOfParkBuilding = useCallback((gridX: number, gridY: number): boolean => {
     const maxSize = 4; // Maximum building size
-    const parkBuildings: BuildingType[] = ['park_large'];
+    const parkBuildings: BuildingType[] = ['park_large', 'baseball_field_small', 'football_field',
+      'mini_golf_course', 'go_kart_track', 'amphitheater', 'greenhouse_garden',
+      'pier_large', 'roller_coaster_small', 'mountain_lodge', 'playground_large', 'mountain_trailhead'];
 
     for (let dy = 0; dy < maxSize; dy++) {
       for (let dx = 0; dx < maxSize; dx++) {
@@ -4323,10 +4352,17 @@ function CanvasIsometricGrid({ overlayMode, selectedTile, setSelectedTile, isMob
       let leftColor = '#3d6634';
       let rightColor = '#5a8f4f';
       let strokeColor = '#2d4a26';
-      
-      const isPark = tile.building.type === 'park' || tile.building.type === 'park_large' || tile.building.type === 'tennis' ||
+
+      // These get grey bases: baseball_stadium, community_center, swimming_pool, office_building_small
+      const allParkTypes = ['park', 'park_large', 'tennis', 'basketball_courts', 'playground_small',
+        'playground_large', 'baseball_field_small', 'soccer_field_small', 'football_field',
+        'skate_park', 'mini_golf_course', 'bleachers_field', 'go_kart_track', 'amphitheater', 
+        'greenhouse_garden', 'animal_pens_farm', 'cabin_house', 'campground', 'marina_docks_small', 
+        'pier_large', 'roller_coaster_small', 'community_garden', 'pond_park', 'park_gate', 
+        'mountain_lodge', 'mountain_trailhead'];
+      const isPark = allParkTypes.includes(tile.building.type) ||
                      (tile.building.type === 'empty' && isPartOfParkBuilding(tile.x, tile.y));
-      // Check if this is a building (not grass, empty, water, road, tree, park, or tennis)
+      // Check if this is a building (not grass, empty, water, road, tree, or parks)
       // Also check if it's part of a multi-tile building footprint
       const isDirectBuilding = !isPark &&
         tile.building.type !== 'grass' &&
@@ -4770,8 +4806,10 @@ function CanvasIsometricGrid({ overlayMode, selectedTile, setSelectedTile, isMob
         return;
       }
       
-      // Check if this building type has a sprite in the tile renderer
-      const hasTileSprite = BUILDING_TO_SPRITE[buildingType];
+      // Check if this building type has a sprite in the tile renderer or parks sheet
+      const activePack = getActiveSpritePack();
+      const hasTileSprite = BUILDING_TO_SPRITE[buildingType] || 
+        (activePack.parksBuildings && activePack.parksBuildings[buildingType]);
       
       if (hasTileSprite) {
         // Special handling for water: use separate water.png image
@@ -4799,8 +4837,7 @@ function CanvasIsometricGrid({ overlayMode, selectedTile, setSelectedTile, isMob
           // ===== TILE RENDERER PATH =====
           // Handles both single-tile and multi-tile buildings
           // Get the filtered sprite sheet from cache (or fallback to unfiltered if not available)
-          // Use the active sprite pack's source for cache lookup
-          const activePack = getActiveSpritePack();
+          // Use the active sprite pack's source for cache lookup (activePack already defined above)
           
           // Check if building is under construction (constructionProgress < 100)
           const isUnderConstruction = tile.building.constructionProgress !== undefined &&
@@ -4810,14 +4847,26 @@ function CanvasIsometricGrid({ overlayMode, selectedTile, setSelectedTile, isMob
           const isAbandoned = tile.building.abandoned === true;
 
           // Use appropriate sprite sheet based on building state
-          // Priority: construction > abandoned > dense variants > normal
+          // Priority: parks construction > construction > abandoned > parks > dense variants > normal
           let spriteSource = activePack.src;
           let useDenseVariant: { row: number; col: number } | null = null;
+          let useParksBuilding: { row: number; col: number } | null = null;
           
-          if (isUnderConstruction && activePack.constructionSrc) {
+          // Check if this is a parks building first
+          const isParksBuilding = activePack.parksBuildings && activePack.parksBuildings[buildingType];
+          
+          if (isUnderConstruction && isParksBuilding && activePack.parksConstructionSrc) {
+            // Parks building under construction - use parks construction sheet
+            useParksBuilding = activePack.parksBuildings![buildingType];
+            spriteSource = activePack.parksConstructionSrc;
+          } else if (isUnderConstruction && activePack.constructionSrc) {
             spriteSource = activePack.constructionSrc;
           } else if (isAbandoned && activePack.abandonedSrc) {
             spriteSource = activePack.abandonedSrc;
+          } else if (isParksBuilding && activePack.parksSrc) {
+            // Check if this building type is from the parks sprite sheet
+            useParksBuilding = activePack.parksBuildings![buildingType];
+            spriteSource = activePack.parksSrc;
           } else if (activePack.denseSrc && activePack.denseVariants && activePack.denseVariants[buildingType]) {
             // Check if this building type has dense variants available
             const variants = activePack.denseVariants[buildingType];
@@ -4840,10 +4889,24 @@ function CanvasIsometricGrid({ overlayMode, selectedTile, setSelectedTile, isMob
             const sheetWidth = filteredSpriteSheet.naturalWidth || filteredSpriteSheet.width;
             const sheetHeight = filteredSpriteSheet.naturalHeight || filteredSpriteSheet.height;
             
-            // Get sprite coordinates - either from dense variant or normal mapping
+            // Get sprite coordinates - either from parks, dense variant, or normal mapping
             let coords: { sx: number; sy: number; sw: number; sh: number } | null;
             let isDenseVariant = false;
-            if (useDenseVariant) {
+            let isParksBuilding = false;
+            if (useParksBuilding) {
+              isParksBuilding = true;
+              // Calculate coordinates from parks sprite sheet using its own grid dimensions
+              const parksCols = activePack.parksCols || 5;
+              const parksRows = activePack.parksRows || 6;
+              const tileWidth = Math.floor(sheetWidth / parksCols);
+              const tileHeight = Math.floor(sheetHeight / parksRows);
+              coords = {
+                sx: useParksBuilding.col * tileWidth,
+                sy: useParksBuilding.row * tileHeight,
+                sw: tileWidth,
+                sh: tileHeight,
+              };
+            } else if (useDenseVariant) {
               isDenseVariant = true;
               // Calculate coordinates directly from dense variant row/col
               const tileWidth = Math.floor(sheetWidth / activePack.cols);
@@ -4942,6 +5005,10 @@ function CanvasIsometricGrid({ overlayMode, selectedTile, setSelectedTile, isMob
               if (isDenseVariant && activePack.denseScales && buildingType in activePack.denseScales) {
                 scaleMultiplier *= activePack.denseScales[buildingType];
               }
+              // Apply parks-specific scale if building is from parks sheet and has custom scale in config
+              if (isParksBuilding && activePack.parksScales && buildingType in activePack.parksScales) {
+                scaleMultiplier *= activePack.parksScales[buildingType];
+              }
               // Apply construction-specific scale if building is under construction and has custom scale
               if (isUnderConstruction && activePack.constructionScales && buildingType in activePack.constructionScales) {
                 scaleMultiplier *= activePack.constructionScales[buildingType];
@@ -4961,7 +5028,11 @@ function CanvasIsometricGrid({ overlayMode, selectedTile, setSelectedTile, isMob
               
               // Apply per-sprite horizontal offset adjustments
               const spriteKey = BUILDING_TO_SPRITE[buildingType];
-              const horizontalOffset = (spriteKey && SPRITE_HORIZONTAL_OFFSETS[spriteKey]) ? SPRITE_HORIZONTAL_OFFSETS[spriteKey] * w : 0;
+              let horizontalOffset = (spriteKey && SPRITE_HORIZONTAL_OFFSETS[spriteKey]) ? SPRITE_HORIZONTAL_OFFSETS[spriteKey] * w : 0;
+              // Apply parks-specific horizontal offset if available
+              if (isParksBuilding && activePack.parksHorizontalOffsets && buildingType in activePack.parksHorizontalOffsets) {
+                horizontalOffset = activePack.parksHorizontalOffsets[buildingType] * w;
+              }
               drawX += horizontalOffset;
               
               // Simple positioning: sprite bottom aligns with tile/footprint bottom
@@ -4977,13 +5048,16 @@ function CanvasIsometricGrid({ overlayMode, selectedTile, setSelectedTile, isMob
                 verticalPush = destHeight * 0.15;
               }
               // Use state-specific offset if available, then fall back to building-type or sprite-key offsets
-              // Priority: construction > abandoned > dense > building-type > sprite-key
+              // Priority: construction > abandoned > parks > dense > building-type > sprite-key
               let extraOffset = 0;
               if (isUnderConstruction && activePack.constructionVerticalOffsets && spriteKey && spriteKey in activePack.constructionVerticalOffsets) {
                 extraOffset = activePack.constructionVerticalOffsets[spriteKey] * h;
               } else if (isAbandoned && activePack.abandonedVerticalOffsets && buildingType in activePack.abandonedVerticalOffsets) {
                 // Abandoned buildings may need different positioning than normal
                 extraOffset = activePack.abandonedVerticalOffsets[buildingType] * h;
+              } else if (isParksBuilding && activePack.parksVerticalOffsets && buildingType in activePack.parksVerticalOffsets) {
+                // Parks buildings may need specific positioning
+                extraOffset = activePack.parksVerticalOffsets[buildingType] * h;
               } else if (isDenseVariant && activePack.denseVerticalOffsets && buildingType in activePack.denseVerticalOffsets) {
                 // Dense variants may need different positioning than normal
                 extraOffset = activePack.denseVerticalOffsets[buildingType] * h;
@@ -5071,9 +5145,16 @@ function CanvasIsometricGrid({ overlayMode, selectedTile, setSelectedTile, isMob
           x <= Math.max(dragStartTile.x, dragEndTile.x) &&
           y >= Math.min(dragStartTile.y, dragEndTile.y) &&
           y <= Math.max(dragStartTile.y, dragEndTile.y);
-        
+
         // Check if this tile needs a gray base tile (buildings except parks)
-        const isPark = tile.building.type === 'park' || tile.building.type === 'park_large' || tile.building.type === 'tennis' ||
+        // These get grey bases: baseball_stadium, community_center, swimming_pool, office_building_small
+        const allParkTypesCheck = ['park', 'park_large', 'tennis', 'basketball_courts', 'playground_small',
+          'playground_large', 'baseball_field_small', 'soccer_field_small', 'football_field',
+          'skate_park', 'mini_golf_course', 'bleachers_field', 'go_kart_track', 'amphitheater', 
+          'greenhouse_garden', 'animal_pens_farm', 'cabin_house', 'campground', 'marina_docks_small', 
+          'pier_large', 'roller_coaster_small', 'community_garden', 'pond_park', 'park_gate', 
+          'mountain_lodge', 'mountain_trailhead'];
+        const isPark = allParkTypesCheck.includes(tile.building.type) ||
                        (tile.building.type === 'empty' && isPartOfParkBuilding(x, y));
         const isDirectBuilding = !isPark &&
           tile.building.type !== 'grass' &&
@@ -6395,6 +6476,19 @@ export default function Game() {
       factory_large: { width: 3, height: 3 },
       warehouse: { width: 2, height: 2 },
       city_hall: { width: 2, height: 2 },
+      // Parks (new sprite sheet)
+      playground_large: { width: 2, height: 2 },
+      baseball_field_small: { width: 2, height: 2 },
+      football_field: { width: 2, height: 2 },
+      baseball_stadium: { width: 3, height: 3 },
+      mini_golf_course: { width: 2, height: 2 },
+      go_kart_track: { width: 2, height: 2 },
+      amphitheater: { width: 2, height: 2 },
+      greenhouse_garden: { width: 2, height: 2 },
+      pier_large: { width: 2, height: 2 },
+      roller_coaster_small: { width: 2, height: 2 },
+      mountain_lodge: { width: 2, height: 2 },
+      mountain_trailhead: { width: 3, height: 3 },
     };
     
     const getBuildingSize = (type: string) => BUILDING_SIZES[type] || { width: 1, height: 1 };

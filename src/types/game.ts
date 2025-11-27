@@ -43,7 +43,35 @@ export type BuildingType =
   | 'airport'
   | 'space_program'
   | 'city_hall'
-  | 'amusement_park';
+  | 'amusement_park'
+  // Parks (new sprite sheet)
+  | 'basketball_courts'
+  | 'playground_small'
+  | 'playground_large'
+  | 'baseball_field_small'
+  | 'soccer_field_small'
+  | 'football_field'
+  | 'baseball_stadium'
+  | 'community_center'
+  | 'office_building_small'
+  | 'swimming_pool'
+  | 'skate_park'
+  | 'mini_golf_course'
+  | 'bleachers_field'
+  | 'go_kart_track'
+  | 'amphitheater'
+  | 'greenhouse_garden'
+  | 'animal_pens_farm'
+  | 'cabin_house'
+  | 'campground'
+  | 'marina_docks_small'
+  | 'pier_large'
+  | 'roller_coaster_small'
+  | 'community_garden'
+  | 'pond_park'
+  | 'park_gate'
+  | 'mountain_lodge'
+  | 'mountain_trailhead';
 
 export type ZoneType = 'none' | 'residential' | 'commercial' | 'industrial';
 
@@ -73,7 +101,35 @@ export type Tool =
   | 'airport'
   | 'space_program'
   | 'city_hall'
-  | 'amusement_park';
+  | 'amusement_park'
+  // Park tools (new sprite sheet)
+  | 'basketball_courts'
+  | 'playground_small'
+  | 'playground_large'
+  | 'baseball_field_small'
+  | 'soccer_field_small'
+  | 'football_field'
+  | 'baseball_stadium'
+  | 'community_center'
+  | 'office_building_small'
+  | 'swimming_pool'
+  | 'skate_park'
+  | 'mini_golf_course'
+  | 'bleachers_field'
+  | 'go_kart_track'
+  | 'amphitheater'
+  | 'greenhouse_garden'
+  | 'animal_pens_farm'
+  | 'cabin_house'
+  | 'campground'
+  | 'marina_docks_small'
+  | 'pier_large'
+  | 'roller_coaster_small'
+  | 'community_garden'
+  | 'pond_park'
+  | 'park_gate'
+  | 'mountain_lodge'
+  | 'mountain_trailhead';
 
 export interface ToolInfo {
   name: string;
@@ -109,6 +165,34 @@ export const TOOL_INFO: Record<Tool, ToolInfo> = {
   space_program: { name: 'Space Program', cost: 15000, description: 'Reach for the stars (3x3)', size: 3 },
   city_hall: { name: 'City Hall', cost: 6000, description: 'City administration (2x2)', size: 2 },
   amusement_park: { name: 'Amusement Park', cost: 12000, description: 'Major attraction (4x4)', size: 4 },
+  // Parks (new sprite sheet)
+  basketball_courts: { name: 'Basketball Courts', cost: 250, description: 'Outdoor basketball facility', size: 1 },
+  playground_small: { name: 'Small Playground', cost: 200, description: 'Children\'s playground', size: 1 },
+  playground_large: { name: 'Large Playground', cost: 350, description: 'Large playground with more equipment (2x2)', size: 2 },
+  baseball_field_small: { name: 'Baseball Field', cost: 800, description: 'Local baseball diamond (2x2)', size: 2 },
+  soccer_field_small: { name: 'Soccer Field', cost: 400, description: 'Soccer/football pitch', size: 1 },
+  football_field: { name: 'Football Field', cost: 1200, description: 'Football stadium (2x2)', size: 2 },
+  baseball_stadium: { name: 'Baseball Stadium', cost: 6000, description: 'Professional baseball venue (3x3)', size: 3 },
+  community_center: { name: 'Community Center', cost: 500, description: 'Local community hub', size: 1 },
+  office_building_small: { name: 'Small Office', cost: 600, description: 'Small office building', size: 1 },
+  swimming_pool: { name: 'Swimming Pool', cost: 450, description: 'Public swimming facility', size: 1 },
+  skate_park: { name: 'Skate Park', cost: 300, description: 'Skateboarding park', size: 1 },
+  mini_golf_course: { name: 'Mini Golf', cost: 700, description: 'Miniature golf course (2x2)', size: 2 },
+  bleachers_field: { name: 'Bleachers Field', cost: 350, description: 'Sports field with seating', size: 1 },
+  go_kart_track: { name: 'Go-Kart Track', cost: 1000, description: 'Racing entertainment (2x2)', size: 2 },
+  amphitheater: { name: 'Amphitheater', cost: 1500, description: 'Outdoor performance venue (2x2)', size: 2 },
+  greenhouse_garden: { name: 'Greenhouse Garden', cost: 800, description: 'Botanical greenhouse (2x2)', size: 2 },
+  animal_pens_farm: { name: 'Animal Pens', cost: 400, description: 'Petting zoo / farm animals', size: 1 },
+  cabin_house: { name: 'Cabin House', cost: 300, description: 'Rustic cabin retreat', size: 1 },
+  campground: { name: 'Campground', cost: 250, description: 'Outdoor camping area', size: 1 },
+  marina_docks_small: { name: 'Small Marina', cost: 600, description: 'Boat docks and marina', size: 1 },
+  pier_large: { name: 'Large Pier', cost: 1200, description: 'Waterfront pier (2x2)', size: 2 },
+  roller_coaster_small: { name: 'Roller Coaster', cost: 3000, description: 'Thrill ride (2x2)', size: 2 },
+  community_garden: { name: 'Community Garden', cost: 200, description: 'Shared gardening space', size: 1 },
+  pond_park: { name: 'Pond Park', cost: 350, description: 'Park with scenic pond', size: 1 },
+  park_gate: { name: 'Park Gate', cost: 150, description: 'Decorative park entrance', size: 1 },
+  mountain_lodge: { name: 'Mountain Lodge', cost: 1500, description: 'Nature retreat lodge (2x2)', size: 2 },
+  mountain_trailhead: { name: 'Trailhead', cost: 400, description: 'Hiking trail entrance (3x3)', size: 3 },
 };
 
 export interface Building {
@@ -298,4 +382,32 @@ export const BUILDING_STATS: Record<BuildingType, { maxPop: number; maxJobs: num
   subway_station: { maxPop: 0, maxJobs: 15, pollution: 0, landValue: 25 },
   city_hall: { maxPop: 0, maxJobs: 60, pollution: 0, landValue: 50 },
   amusement_park: { maxPop: 0, maxJobs: 100, pollution: 8, landValue: 60 },
+  // Parks (new sprite sheet)
+  basketball_courts: { maxPop: 0, maxJobs: 2, pollution: -3, landValue: 12 },
+  playground_small: { maxPop: 0, maxJobs: 1, pollution: -5, landValue: 15 },
+  playground_large: { maxPop: 0, maxJobs: 2, pollution: -8, landValue: 18 },
+  baseball_field_small: { maxPop: 0, maxJobs: 4, pollution: -10, landValue: 25 },
+  soccer_field_small: { maxPop: 0, maxJobs: 2, pollution: -5, landValue: 15 },
+  football_field: { maxPop: 0, maxJobs: 8, pollution: -8, landValue: 30 },
+  baseball_stadium: { maxPop: 0, maxJobs: 60, pollution: 5, landValue: 45 },
+  community_center: { maxPop: 0, maxJobs: 10, pollution: 0, landValue: 20 },
+  office_building_small: { maxPop: 0, maxJobs: 25, pollution: 1, landValue: 22 },
+  swimming_pool: { maxPop: 0, maxJobs: 5, pollution: -5, landValue: 18 },
+  skate_park: { maxPop: 0, maxJobs: 2, pollution: -3, landValue: 12 },
+  mini_golf_course: { maxPop: 0, maxJobs: 6, pollution: -8, landValue: 22 },
+  bleachers_field: { maxPop: 0, maxJobs: 3, pollution: -5, landValue: 15 },
+  go_kart_track: { maxPop: 0, maxJobs: 10, pollution: 5, landValue: 20 },
+  amphitheater: { maxPop: 0, maxJobs: 15, pollution: -5, landValue: 35 },
+  greenhouse_garden: { maxPop: 0, maxJobs: 8, pollution: -15, landValue: 28 },
+  animal_pens_farm: { maxPop: 0, maxJobs: 4, pollution: 2, landValue: 10 },
+  cabin_house: { maxPop: 4, maxJobs: 0, pollution: -3, landValue: 15 },
+  campground: { maxPop: 0, maxJobs: 3, pollution: -8, landValue: 12 },
+  marina_docks_small: { maxPop: 0, maxJobs: 8, pollution: 2, landValue: 25 },
+  pier_large: { maxPop: 0, maxJobs: 12, pollution: 1, landValue: 30 },
+  roller_coaster_small: { maxPop: 0, maxJobs: 20, pollution: 3, landValue: 40 },
+  community_garden: { maxPop: 0, maxJobs: 2, pollution: -12, landValue: 18 },
+  pond_park: { maxPop: 0, maxJobs: 2, pollution: -15, landValue: 22 },
+  park_gate: { maxPop: 0, maxJobs: 1, pollution: -2, landValue: 8 },
+  mountain_lodge: { maxPop: 0, maxJobs: 15, pollution: -5, landValue: 35 },
+  mountain_trailhead: { maxPop: 0, maxJobs: 2, pollution: -10, landValue: 15 },
 };

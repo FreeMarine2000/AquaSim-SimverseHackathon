@@ -21,6 +21,16 @@ export interface SpritePack {
   // Dense variant definitions: maps building type to available variants in the dense sheet
   // Each variant specifies row and column (0-indexed) in the dense sprite sheet
   denseVariants?: Record<string, { row: number; col: number }[]>;
+  // Path to the parks sprite sheet (separate sheet for park/recreation buildings)
+  parksSrc?: string;
+  // Path to the parks construction sprite sheet (same layout as parks, but under construction)
+  parksConstructionSrc?: string;
+  // Parks layout configuration (columns and rows for the parks sheet)
+  parksCols?: number;
+  parksRows?: number;
+  // Parks buildings: maps building type to position in parks sprite sheet
+  // Each entry specifies the row and column (0-indexed) in the parks sprite sheet
+  parksBuildings?: Record<string, { row: number; col: number }>;
   // Number of columns in the sprite sheet
   cols: number;
   // Number of rows in the sprite sheet
@@ -56,6 +66,14 @@ export interface SpritePack {
   // Per-building-type scale adjustments for DENSE variant sprites only
   // Values are multiplied with the normal scale (e.g., 0.95 = 95% of normal size)
   denseScales?: Record<string, number>;
+  // Per-building-type vertical offset adjustments for PARKS sprite sheet buildings
+  // These are used when rendering parks buildings from the parks sprite sheet
+  parksVerticalOffsets?: Record<string, number>;
+  // Per-building-type horizontal offset adjustments for PARKS sprite sheet buildings
+  parksHorizontalOffsets?: Record<string, number>;
+  // Per-building-type scale adjustments for PARKS sprite sheet buildings
+  // Values are multiplied with the normal scale (e.g., 0.95 = 95% of normal size)
+  parksScales?: Record<string, number>;
   // Maps building types to sprite keys in spriteOrder
   buildingToSprite: Record<string, string>;
   // Optional global scale multiplier for all sprites in this pack
@@ -184,6 +202,82 @@ const SPRITE_PACK_RED: SpritePack = {
     water: 'water',
     // Transportation
     subway_station: 'subway_station',
+  },
+  // Parks sprite sheet configuration (same as sprites4)
+  parksSrc: '/assets/sprites_red_water_new_parks.png',
+  parksCols: 5,
+  parksRows: 6,
+  parksBuildings: {
+    // Row 0: tennis_court(skip), basketball_courts, playground_small, playground_large, baseball_field_small
+    basketball_courts: { row: 0, col: 1 },
+    playground_small: { row: 0, col: 2 },
+    playground_large: { row: 0, col: 3 },
+    baseball_field_small: { row: 0, col: 4 },
+    // Row 1: soccer_field_small, football_field, baseball_stadium, community_center, office_building_small
+    soccer_field_small: { row: 1, col: 0 },
+    football_field: { row: 1, col: 1 },
+    baseball_stadium: { row: 1, col: 2 },
+    community_center: { row: 1, col: 3 },
+    office_building_small: { row: 1, col: 4 },
+    // Row 2: swimming_pool, skate_park, mini_golf_course, bleachers_field, go_kart_track
+    swimming_pool: { row: 2, col: 0 },
+    skate_park: { row: 2, col: 1 },
+    mini_golf_course: { row: 2, col: 2 },
+    bleachers_field: { row: 2, col: 3 },
+    go_kart_track: { row: 2, col: 4 },
+    // Row 3: amphitheater, greenhouse_garden, animal_pens_farm, cabin_house, campground
+    amphitheater: { row: 3, col: 0 },
+    greenhouse_garden: { row: 3, col: 1 },
+    animal_pens_farm: { row: 3, col: 2 },
+    cabin_house: { row: 3, col: 3 },
+    campground: { row: 3, col: 4 },
+    // Row 4: marina_docks_small, pier_large, beach_tile(skip), pier_broken(skip), roller_coaster_small
+    marina_docks_small: { row: 4, col: 0 },
+    pier_large: { row: 4, col: 1 },
+    roller_coaster_small: { row: 4, col: 4 },
+    // Row 5: community_garden, pond_park, park_gate, mountain_lodge, mountain_trailhead
+    community_garden: { row: 5, col: 0 },
+    pond_park: { row: 5, col: 1 },
+    park_gate: { row: 5, col: 2 },
+    mountain_lodge: { row: 5, col: 3 },
+    mountain_trailhead: { row: 5, col: 4 },
+  },
+  parksVerticalOffsets: {
+    basketball_courts: -0.15,
+    playground_small: -0.25,  // shifted up 0.1
+    playground_large: -1.05,  // shifted up 0.2, now 2x2
+    baseball_field_small: -0.85,
+    soccer_field_small: -0.20,  // shifted up slightly
+    football_field: -0.85,
+    baseball_stadium: -1.5,  // adjusted for scale, moved up 0.5 tiles
+    community_center: -0.2,
+    office_building_small: -0.3,
+    swimming_pool: -0.20,  // shifted up slightly
+    skate_park: -0.15,
+    mini_golf_course: -0.85,
+    bleachers_field: -0.2,
+    go_kart_track: -0.35,  // shifted down 0.5
+    amphitheater: -0.85,
+    greenhouse_garden: -0.55,  // shifted down 0.3
+    animal_pens_farm: -0.15,
+    cabin_house: -0.2,
+    campground: -0.15,
+    marina_docks_small: -0.15,
+    pier_large: -0.85,
+    roller_coaster_small: -0.35,  // shifted down 0.5
+    community_garden: -0.15,
+    pond_park: -0.15,
+    park_gate: -0.15,
+    mountain_lodge: -0.85,
+    mountain_trailhead: -1.5,  // now 3x3
+  },
+  parksHorizontalOffsets: {
+    // swimming_pool: centered (no offset)
+  },
+  parksScales: {
+    baseball_stadium: 0.81,  // 10% smaller than 0.90
+    swimming_pool: 0.95,  // scaled down 5%
+    soccer_field_small: 0.95,  // scaled down 5%
   },
 };
 
@@ -319,7 +413,7 @@ const SPRITE_PACK_SPRITES4: SpritePack = {
   constructionVerticalOffsets: {
     water_tower: 0.0, // Construction water tower shifted down 0.5 tiles from normal (-0.5 + 0.5 = 0.0)
     apartment_high: 2.6, // Construction apartment_high shifted down 3.2 tiles from normal (-0.60 + 3.2 = 2.6)
-    apartment_low: -0.2, // Construction apartment_low shifted down 0.8 tiles from normal (-1.0 + 0.8 = -0.2)
+    apartment_low: 0.3, // Construction apartment_low shifted down 1.3 tiles from normal (-1.0 + 1.3 = 0.3)
     mall: -0.2, // Construction mall shifted down 0.8 tiles from normal (-1.0 + 0.8 = -0.2)
     office_high: 0.3, // Construction office_high shifted down 1.0 tiles from normal (-0.7 + 1.0 = 0.3)
   },
@@ -327,6 +421,7 @@ const SPRITE_PACK_SPRITES4: SpritePack = {
     mall: 0.92, // Construction mall scaled down 8%
     office_high: 0.90, // Construction office_high scaled down 10%
     apartment_high: 0.65, // Construction apartment_high scaled down 35%
+    apartment_low: 0.95, // Construction apartment_low scaled down 5%
   },
   abandonedVerticalOffsets: {
     // Abandoned apartments need different positioning than normal
@@ -344,6 +439,84 @@ const SPRITE_PACK_SPRITES4: SpritePack = {
   denseScales: {
     // Dense apartment_high scaled down 5%
     apartment_high: 0.95,
+  },
+  // Parks sprite sheet configuration (same offsets/scaling approach as dense)
+  parksSrc: '/assets/sprites_red_water_new_parks.png',
+  parksConstructionSrc: '/assets/sprites_red_water_new_parks_construction.png',
+  parksCols: 5,
+  parksRows: 6,
+  parksBuildings: {
+    // Row 0: tennis_court(skip), basketball_courts, playground_small, playground_large, baseball_field_small
+    basketball_courts: { row: 0, col: 1 },
+    playground_small: { row: 0, col: 2 },
+    playground_large: { row: 0, col: 3 },
+    baseball_field_small: { row: 0, col: 4 },
+    // Row 1: soccer_field_small, football_field, baseball_stadium, community_center, office_building_small
+    soccer_field_small: { row: 1, col: 0 },
+    football_field: { row: 1, col: 1 },
+    baseball_stadium: { row: 1, col: 2 },
+    community_center: { row: 1, col: 3 },
+    office_building_small: { row: 1, col: 4 },
+    // Row 2: swimming_pool, skate_park, mini_golf_course, bleachers_field, go_kart_track
+    swimming_pool: { row: 2, col: 0 },
+    skate_park: { row: 2, col: 1 },
+    mini_golf_course: { row: 2, col: 2 },
+    bleachers_field: { row: 2, col: 3 },
+    go_kart_track: { row: 2, col: 4 },
+    // Row 3: amphitheater, greenhouse_garden, animal_pens_farm, cabin_house, campground
+    amphitheater: { row: 3, col: 0 },
+    greenhouse_garden: { row: 3, col: 1 },
+    animal_pens_farm: { row: 3, col: 2 },
+    cabin_house: { row: 3, col: 3 },
+    campground: { row: 3, col: 4 },
+    // Row 4: marina_docks_small, pier_large, beach_tile(skip), pier_broken(skip), roller_coaster_small
+    marina_docks_small: { row: 4, col: 0 },
+    pier_large: { row: 4, col: 1 },
+    roller_coaster_small: { row: 4, col: 4 },
+    // Row 5: community_garden, pond_park, park_gate, mountain_lodge, mountain_trailhead
+    community_garden: { row: 5, col: 0 },
+    pond_park: { row: 5, col: 1 },
+    park_gate: { row: 5, col: 2 },
+    mountain_lodge: { row: 5, col: 3 },
+    mountain_trailhead: { row: 5, col: 4 },
+  },
+  parksVerticalOffsets: {
+    // Same approach as denseVerticalOffsets - adjust as needed for proper positioning
+    basketball_courts: -0.15,
+    playground_small: -0.25,  // shifted up 0.1
+    playground_large: -1.05,  // shifted up 0.2, now 2x2
+    baseball_field_small: -0.85,
+    soccer_field_small: -0.20,  // shifted up slightly
+    football_field: -0.85,
+    baseball_stadium: -1.5,  // adjusted for scale, moved up 0.5 tiles
+    community_center: -0.2,
+    office_building_small: -0.3,
+    swimming_pool: -0.20,  // shifted up slightly
+    skate_park: -0.15,
+    mini_golf_course: -0.85,
+    bleachers_field: -0.2,
+    go_kart_track: -0.35,  // shifted down 0.5
+    amphitheater: -0.85,
+    greenhouse_garden: -0.55,  // shifted down 0.3
+    animal_pens_farm: -0.15,
+    cabin_house: -0.2,
+    campground: -0.15,
+    marina_docks_small: -0.15,
+    pier_large: -0.85,
+    roller_coaster_small: -0.35,  // shifted down 0.5
+    community_garden: -0.15,
+    pond_park: -0.15,
+    park_gate: -0.15,
+    mountain_lodge: -0.85,
+    mountain_trailhead: -1.5,  // now 3x3
+  },
+  parksHorizontalOffsets: {
+    // swimming_pool: centered (no offset)
+  },
+  parksScales: {
+    baseball_stadium: 0.81,  // 10% smaller than 0.90
+    swimming_pool: 0.95,  // scaled down 5%
+    soccer_field_small: 0.95,  // scaled down 5%
   },
   buildingToSprite: {
     house_small: 'house_small',
@@ -394,7 +567,7 @@ export const SPRITE_PACKS: SpritePack[] = [
 ];
 
 // Default sprite pack ID
-export const DEFAULT_SPRITE_PACK_ID = 'red';
+export const DEFAULT_SPRITE_PACK_ID = 'sprites4';
 
 // Get a sprite pack by ID
 export function getSpritePack(id: string): SpritePack {
