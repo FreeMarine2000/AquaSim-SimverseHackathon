@@ -3723,43 +3723,33 @@ function CanvasIsometricGrid({ overlayMode, selectedTile, setSelectedTile, isMob
       ctx.fillStyle = plane.color;
       ctx.beginPath();
       // Draw a more cylindrical fuselage using a rounded rect approach
-      const fuselageLength = 16;
+      const fuselageLength = 18;
       const fuselageWidth = 2.5; // Thinner for more cylindrical look
       ctx.moveTo(-fuselageLength, -fuselageWidth);
-      ctx.lineTo(fuselageLength - 4, -fuselageWidth);
-      ctx.quadraticCurveTo(fuselageLength, -fuselageWidth, fuselageLength, 0);
-      ctx.quadraticCurveTo(fuselageLength, fuselageWidth, fuselageLength - 4, fuselageWidth);
+      ctx.lineTo(fuselageLength - 2, -fuselageWidth);
+      ctx.quadraticCurveTo(fuselageLength, -fuselageWidth * 0.5, fuselageLength, 0);
+      ctx.quadraticCurveTo(fuselageLength, fuselageWidth * 0.5, fuselageLength - 2, fuselageWidth);
       ctx.lineTo(-fuselageLength, fuselageWidth);
       ctx.quadraticCurveTo(-fuselageLength - 2, fuselageWidth, -fuselageLength - 2, 0);
       ctx.quadraticCurveTo(-fuselageLength - 2, -fuselageWidth, -fuselageLength, -fuselageWidth);
       ctx.closePath();
       ctx.fill();
       
-      // Nose cone
-      ctx.fillStyle = '#94a3b8'; // Gray nose cone
-      ctx.beginPath();
-      ctx.moveTo(fuselageLength, 0);
-      ctx.lineTo(fuselageLength + 6, 0);
-      ctx.lineTo(fuselageLength, -fuselageWidth * 0.8);
-      ctx.lineTo(fuselageLength, fuselageWidth * 0.8);
-      ctx.closePath();
-      ctx.fill();
-      
-      // Wings
+      // Wings - connected to fuselage body
       ctx.fillStyle = plane.color;
       ctx.beginPath();
-      ctx.moveTo(0, -3);
+      ctx.moveTo(0, -fuselageWidth);
       ctx.lineTo(-8, -18);
       ctx.lineTo(-12, -18);
-      ctx.lineTo(-4, -3);
+      ctx.lineTo(-4, -fuselageWidth);
       ctx.closePath();
       ctx.fill();
       
       ctx.beginPath();
-      ctx.moveTo(0, 3);
+      ctx.moveTo(0, fuselageWidth);
       ctx.lineTo(-8, 18);
       ctx.lineTo(-12, 18);
-      ctx.lineTo(-4, 3);
+      ctx.lineTo(-4, fuselageWidth);
       ctx.closePath();
       ctx.fill();
       
