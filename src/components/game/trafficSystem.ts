@@ -5,6 +5,12 @@
 
 import { Tile } from '@/types/game';
 import { TILE_WIDTH, TILE_HEIGHT, CarDirection } from './types';
+import { 
+  TRAFFIC_LIGHT_MIN_ZOOM, 
+  DIRECTION_ARROWS_MIN_ZOOM, 
+  MEDIAN_PLANTS_MIN_ZOOM,
+  LANE_MARKINGS_MEDIAN_MIN_ZOOM,
+} from './constants';
 
 // ============================================================================
 // Types
@@ -527,7 +533,7 @@ export function drawMedian(
     ctx.stroke();
     
     // Draw plants/trees at intervals
-    if (zoom >= 0.55) {
+    if (zoom >= MEDIAN_PLANTS_MIN_ZOOM) {
       const plantSpacing = 8;
       const numPlants = Math.floor(len / plantSpacing);
       
@@ -780,7 +786,7 @@ export function drawMergedRoadSegment(
   ctx.fill();
   
   // Draw lane markings based on road type
-  if (zoom >= 0.6) {
+  if (zoom >= LANE_MARKINGS_MEDIAN_MIN_ZOOM) {
     if (mergeInfo.type !== 'single' && mergeInfo.hasMedian) {
       // Draw median for avenues/highways
       if (mergeInfo.side === 'center' || 
@@ -804,7 +810,7 @@ export function drawMergedRoadSegment(
     }
     
     // Draw direction arrows
-    if (zoom >= 0.65 && mergeInfo.type !== 'single') {
+    if (zoom >= DIRECTION_ARROWS_MIN_ZOOM && mergeInfo.type !== 'single') {
       const flowDirs = getTrafficFlowDirection(mergeInfo);
       if (flowDirs.length === 1) {
         drawRoadArrow(ctx, cx, cy, flowDirs[0], zoom);
@@ -847,7 +853,7 @@ export function drawMergedRoadSegment(
   
   // Draw traffic lights at intersections
   const connectionCount = [adj.north, adj.east, adj.south, adj.west].filter(Boolean).length;
-  if (connectionCount >= 3 && zoom >= 0.45) {
+  if (connectionCount >= 3 && zoom >= TRAFFIC_LIGHT_MIN_ZOOM) {
     const lightState = getTrafficLightState(trafficLightTime);
     
     // Draw traffic lights at appropriate corners based on which roads exist

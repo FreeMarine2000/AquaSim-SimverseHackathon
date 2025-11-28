@@ -1,6 +1,6 @@
 import React, { useCallback, useRef } from 'react';
 import { Car, CarDirection, EmergencyVehicle, EmergencyVehicleType, Pedestrian, PedestrianDestType, WorldRenderState, TILE_WIDTH, TILE_HEIGHT } from './types';
-import { CAR_COLORS, PEDESTRIAN_SKIN_COLORS, PEDESTRIAN_SHIRT_COLORS, PEDESTRIAN_MIN_ZOOM, DIRECTION_META } from './constants';
+import { CAR_COLORS, PEDESTRIAN_SKIN_COLORS, PEDESTRIAN_SHIRT_COLORS, PEDESTRIAN_MIN_ZOOM, PEDESTRIAN_MIN_ZOOM_MOBILE, DIRECTION_META } from './constants';
 import { isRoadTile, getDirectionOptions, pickNextDirection, findPathOnRoads, getDirectionToTile, gridToScreen } from './utils';
 import { findResidentialBuildings, findPedestrianDestinations, findStations, findFires } from './gridFinders';
 import { drawPedestrians as drawPedestriansUtil } from './drawPedestrians';
@@ -688,7 +688,7 @@ export function useVehicleSystems(
   const updatePedestrians = useCallback((delta: number) => {
     const { grid: currentGrid, gridSize: currentGridSize, speed: currentSpeed, zoom: currentZoom } = worldStateRef.current;
     
-    const minZoomForPedestrians = isMobile ? 0.55 : PEDESTRIAN_MIN_ZOOM;
+    const minZoomForPedestrians = isMobile ? PEDESTRIAN_MIN_ZOOM_MOBILE : PEDESTRIAN_MIN_ZOOM;
     if (currentZoom < minZoomForPedestrians) {
       pedestriansRef.current = [];
       return;
@@ -985,7 +985,7 @@ export function useVehicleSystems(
     const canvas = ctx.canvas;
     const dpr = window.devicePixelRatio || 1;
     
-    const minZoomForPedestrians = isMobile ? 0.55 : PEDESTRIAN_MIN_ZOOM;
+    const minZoomForPedestrians = isMobile ? PEDESTRIAN_MIN_ZOOM_MOBILE : PEDESTRIAN_MIN_ZOOM;
     if (currentZoom < minZoomForPedestrians) {
       return;
     }

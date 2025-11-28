@@ -36,6 +36,10 @@ import {
   PEDESTRIAN_SKIN_COLORS,
   PEDESTRIAN_SHIRT_COLORS,
   PEDESTRIAN_MIN_ZOOM,
+  TRAFFIC_LIGHT_MIN_ZOOM,
+  DIRECTION_ARROWS_MIN_ZOOM,
+  MEDIAN_PLANTS_MIN_ZOOM,
+  LANE_MARKINGS_MIN_ZOOM,
   BOAT_COLORS,
   BOAT_MIN_ZOOM,
   WAKE_MAX_AGE,
@@ -2072,7 +2076,7 @@ export function CanvasIsometricGrid({ overlayMode, selectedTile, setSelectedTile
       // ============================================
       // DRAW LANE MARKINGS AND MEDIANS
       // ============================================
-      if (currentZoom >= 0.5) {
+      if (currentZoom >= LANE_MARKINGS_MIN_ZOOM) {
         const connectionCount = [north, east, south, west].filter(Boolean).length;
         const isIntersection = connectionCount >= 3;
         
@@ -2110,7 +2114,7 @@ export function CanvasIsometricGrid({ overlayMode, selectedTile, setSelectedTile
             // Draw median divider (double yellow or planted median)
             if (mergeInfo.orientation === 'ns') {
               // Median runs NS - draw on the west edge of this tile
-              if (mergeInfo.medianType === 'plants' && currentZoom >= 0.55) {
+              if (mergeInfo.medianType === 'plants' && currentZoom >= MEDIAN_PLANTS_MIN_ZOOM) {
                 // Draw planted median
                 ctx.fillStyle = '#6b7280'; // Concrete base
                 const medianW = 3;
@@ -2146,7 +2150,7 @@ export function CanvasIsometricGrid({ overlayMode, selectedTile, setSelectedTile
               }
             } else if (mergeInfo.orientation === 'ew') {
               // Median runs EW - draw on the south edge of this tile
-              if (mergeInfo.medianType === 'plants' && currentZoom >= 0.55) {
+              if (mergeInfo.medianType === 'plants' && currentZoom >= MEDIAN_PLANTS_MIN_ZOOM) {
                 ctx.fillStyle = '#6b7280';
                 const medianW = 3;
                 ctx.fillRect(eastEdgeX - 2, eastEdgeY - medianW, (westEdgeX - eastEdgeX) + 4, medianW * 2);
@@ -2276,7 +2280,7 @@ export function CanvasIsometricGrid({ overlayMode, selectedTile, setSelectedTile
         }
         
         // Draw directional arrows for merged roads
-        if (mergeInfo.type !== 'single' && currentZoom >= 0.65 && mergeInfo.side !== 'center') {
+        if (mergeInfo.type !== 'single' && currentZoom >= DIRECTION_ARROWS_MIN_ZOOM && mergeInfo.side !== 'center') {
           const flowDirs = getTrafficFlowDirection(mergeInfo);
           if (flowDirs.length === 1) {
             drawRoadArrow(ctx, cx, cy, flowDirs[0], currentZoom);
@@ -2303,7 +2307,7 @@ export function CanvasIsometricGrid({ overlayMode, selectedTile, setSelectedTile
         // ============================================
         // PERF: Skip traffic lights during mobile panning/zooming for better performance
         const skipTrafficLights = isMobile && (isPanningRef.current || isPinchZoomingRef.current);
-        if (isIntersection && currentZoom >= 0.45 && !skipTrafficLights) {
+        if (isIntersection && currentZoom >= TRAFFIC_LIGHT_MIN_ZOOM && !skipTrafficLights) {
           const trafficTime = trafficLightTimerRef.current;
           const lightState = getTrafficLightState(trafficTime);
           

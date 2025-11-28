@@ -8,8 +8,15 @@ export const CAR_COLORS = ['#d97777', '#d4a01f', '#2ba67a', '#4d84c8', '#9a6ac9'
 export const PEDESTRIAN_SKIN_COLORS = ['#fdbf7e', '#e0ac69', '#c68642', '#8d5524', '#613318'];
 export const PEDESTRIAN_SHIRT_COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#ffffff', '#1f2937'];
 
-// Minimum zoom level to show pedestrians (zoomed in)
-export const PEDESTRIAN_MIN_ZOOM = 0.5;
+// Zoom thresholds for rendering detail elements
+// Lower values = more zoomed out, higher values = more zoomed in required
+export const PEDESTRIAN_MIN_ZOOM = 0.5;           // Desktop pedestrian threshold
+export const PEDESTRIAN_MIN_ZOOM_MOBILE = 0.55;   // Mobile pedestrian threshold (slightly higher for perf)
+export const TRAFFIC_LIGHT_MIN_ZOOM = 0.45;       // Traffic lights at intersections
+export const DIRECTION_ARROWS_MIN_ZOOM = 0.65;    // Directional arrows on merged roads
+export const MEDIAN_PLANTS_MIN_ZOOM = 0.55;       // Plants/shrubs on road medians
+export const LANE_MARKINGS_MIN_ZOOM = 0.5;        // Lane markings and road lines
+export const LANE_MARKINGS_MEDIAN_MIN_ZOOM = 0.6; // Median markings for avenues/highways
 
 // Airplane system constants
 export const AIRPLANE_MIN_POPULATION = 5000; // Minimum population required for airplane activity
