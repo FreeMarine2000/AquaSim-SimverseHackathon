@@ -151,14 +151,14 @@ function SaveCityDialog({
             You&apos;re about to view a shared city. Would you like to save <strong className="text-foreground">{cityName}</strong> so you can restore it later?
           </DialogDescription>
         </DialogHeader>
-        <div className="flex flex-col gap-2 pt-4">
-          <Button onClick={onSaveAndContinue} className="w-full">
+        <div className="grid gap-2 pt-4">
+          <Button onClick={onSaveAndContinue}>
             Save & Continue
           </Button>
-          <Button onClick={onDontSave} variant="outline" className="w-full">
+          <Button onClick={onDontSave} variant="outline">
             Don&apos;t Save
           </Button>
-          <Button onClick={onCancel} variant="ghost" className="w-full text-muted-foreground">
+          <Button onClick={onCancel} variant="ghost" className="text-muted-foreground">
             Cancel
           </Button>
         </div>

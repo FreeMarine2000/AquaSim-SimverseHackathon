@@ -198,17 +198,6 @@ export function SettingsPanel() {
               <p className="text-muted-foreground text-xs text-center">
                 Your city was saved before viewing a shared city
               </p>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="w-full text-muted-foreground"
-                onClick={() => {
-                  clearSavedCity();
-                  setSavedCityInfo(null);
-                }}
-              >
-                Dismiss
-              </Button>
               <Separator />
             </div>
           )}
