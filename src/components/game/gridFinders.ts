@@ -34,19 +34,19 @@ const PARK_TYPES = new Set<BuildingType>([
 ]);
 
 // Sports facilities where pedestrians play sports
-const SPORTS_TYPES: BuildingType[] = [
+export const SPORTS_TYPES: BuildingType[] = [
   'basketball_courts', 'tennis', 'soccer_field_small', 'baseball_field_small',
   'football_field', 'baseball_stadium', 'stadium', 'swimming_pool', 'skate_park'
 ];
 
 // Recreation areas where pedestrians relax
-const RELAXATION_TYPES: BuildingType[] = [
+export const RELAXATION_TYPES: BuildingType[] = [
   'park', 'park_large', 'community_garden', 'pond_park', 'greenhouse_garden',
   'amphitheater', 'campground', 'marina_docks_small', 'pier_large'
 ];
 
 // Active recreation (not sitting)
-const ACTIVE_RECREATION_TYPES: BuildingType[] = [
+export const ACTIVE_RECREATION_TYPES: BuildingType[] = [
   'playground_small', 'playground_large', 'mini_golf_course', 'go_kart_track',
   'roller_coaster_small', 'amusement_park', 'mountain_trailhead'
 ];

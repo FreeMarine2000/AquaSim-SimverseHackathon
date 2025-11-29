@@ -2,7 +2,7 @@ import React, { useCallback, useRef } from 'react';
 import { Car, CarDirection, EmergencyVehicle, EmergencyVehicleType, Pedestrian, PedestrianDestType, WorldRenderState, TILE_WIDTH, TILE_HEIGHT } from './types';
 import { CAR_COLORS, PEDESTRIAN_MIN_ZOOM, DIRECTION_META, PEDESTRIAN_MAX_COUNT, PEDESTRIAN_ROAD_TILE_DENSITY, PEDESTRIAN_SPAWN_BATCH_SIZE, PEDESTRIAN_SPAWN_INTERVAL } from './constants';
 import { isRoadTile, getDirectionOptions, pickNextDirection, findPathOnRoads, getDirectionToTile, gridToScreen } from './utils';
-import { findResidentialBuildings, findPedestrianDestinations, findStations, findFires, findRecreationAreas, findEnterableBuildings } from './gridFinders';
+import { findResidentialBuildings, findPedestrianDestinations, findStations, findFires, findRecreationAreas, findEnterableBuildings, SPORTS_TYPES, ACTIVE_RECREATION_TYPES } from './gridFinders';
 import { drawPedestrians as drawPedestriansUtil } from './drawPedestrians';
 import { BuildingType, Tile } from '@/types/game';
 import { getTrafficLightState, canProceedThroughIntersection, TRAFFIC_LIGHT_TIMING } from './trafficSystem';
@@ -152,7 +152,23 @@ export function useVehicleSystems(
     // 60% - Normal walking pedestrian heading to a destination
     if (spawnType < 0.6) {
       const home = residentials[Math.floor(Math.random() * residentials.length)];
-      const dest = destinations[Math.floor(Math.random() * destinations.length)];
+      
+      let dest = destinations[Math.floor(Math.random() * destinations.length)];
+      
+      // 40% chance to re-roll and specifically pick a sports/active facility if available
+      // These are rarer in most cities so we boost their selection probability
+      if (Math.random() < 0.4 && dest.type === 'park') {
+        const { grid: currentGrid } = worldStateRef.current;
+        const boostedDests = destinations.filter(d => {
+          if (d.type !== 'park') return false;
+          const tile = currentGrid[d.y]?.[d.x];
+          const buildingType = tile?.building.type;
+          return buildingType && (SPORTS_TYPES.includes(buildingType) || ACTIVE_RECREATION_TYPES.includes(buildingType));
+        });
+        if (boostedDests.length > 0) {
+          dest = boostedDests[Math.floor(Math.random() * boostedDests.length)];
+        }
+      }
       
       const path = findPathOnRoads(currentGrid, currentGridSize, home.x, home.y, dest.x, dest.y);
       if (!path || path.length === 0) {
@@ -194,7 +210,17 @@ export function useVehicleSystems(
       const recreationAreas = findRecreationAreasCallback();
       if (recreationAreas.length === 0) return false;
       
-      const area = recreationAreas[Math.floor(Math.random() * recreationAreas.length)];
+      let area = recreationAreas[Math.floor(Math.random() * recreationAreas.length)];
+      
+      // 50% chance to re-roll and pick a sports/active facility if available
+      if (Math.random() < 0.5) {
+        const sportsAreas = recreationAreas.filter(a => 
+          SPORTS_TYPES.includes(a.buildingType) || ACTIVE_RECREATION_TYPES.includes(a.buildingType)
+        );
+        if (sportsAreas.length > 0) {
+          area = sportsAreas[Math.floor(Math.random() * sportsAreas.length)];
+        }
+      }
       const home = residentials[Math.floor(Math.random() * residentials.length)];
       
       const ped = spawnPedestrianAtRecreation(
