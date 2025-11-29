@@ -200,13 +200,13 @@ function drawSimplePedestrian(ctx: CanvasRenderingContext2D, ped: Pedestrian): v
   // Just draw a small colored circle for the body
   ctx.fillStyle = ped.shirtColor;
   ctx.beginPath();
-  ctx.arc(0, -2, 2.5, 0, Math.PI * 2);
+  ctx.arc(0, -1.7, 2.1, 0, Math.PI * 2);
   ctx.fill();
   
   // Head as tiny dot
   ctx.fillStyle = ped.skinColor;
   ctx.beginPath();
-  ctx.arc(0, -5, 1.5, 0, Math.PI * 2);
+  ctx.arc(0, -4.3, 1.3, 0, Math.PI * 2);
   ctx.fill();
 }
 
