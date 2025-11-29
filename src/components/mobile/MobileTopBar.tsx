@@ -141,7 +141,7 @@ export function MobileTopBar({
               onClick={() => setSpeed(0)}
               variant={speed === 0 ? 'default' : 'ghost'}
               size="icon"
-              className="h-5 w-5"
+              className="h-4 w-4"
               title="Pause"
             >
               <PauseIcon size={8} />
@@ -150,7 +150,7 @@ export function MobileTopBar({
               onClick={() => setSpeed(1)}
               variant={speed === 1 ? 'default' : 'ghost'}
               size="icon"
-              className="h-5 w-5"
+              className="h-4 w-4"
               title="Normal speed"
             >
               <PlayIcon size={8} />
@@ -159,7 +159,7 @@ export function MobileTopBar({
               onClick={() => setSpeed(2)}
               variant={speed === 2 ? 'default' : 'ghost'}
               size="icon"
-              className="h-5 w-5"
+              className="h-4 w-4"
               title="2x speed"
             >
               <FastForwardIcon size={8} />
@@ -168,7 +168,7 @@ export function MobileTopBar({
               onClick={() => setSpeed(3)}
               variant={speed === 3 ? 'default' : 'ghost'}
               size="icon"
-              className="h-5 w-5"
+              className="h-4 w-4"
               title="3x speed"
             >
               <div className="flex items-center -space-x-1">
