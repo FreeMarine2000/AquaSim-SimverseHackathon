@@ -184,14 +184,14 @@ function getPlaneSprite(
     topCrop = 12; // Pixels to crop from top to remove artifact from row above
   }
   if (planeType === 'seaplane') {
-    // Seaplane crops vary by direction - SW/SE use col 0 and need less crop to show wing tops
-    // NW uses the rotated top-down sprite (col 3) so must keep higher crop to avoid tail showing in front
-    if (direction === 'sw' || direction === 'se') {
-      // SW/SE use col 0 - reduce crop to show wing tops
+    // Seaplane crops vary by direction - only SW needs less crop to show wing tops
+    // Other directions (including SE which mirrors SW) need higher crop to avoid tail showing
+    if (direction === 'sw') {
+      // SW uses col 0 - reduce crop to show wing tops
       topCrop = 40;
       bottomCrop = -40; // Extend reading area downward to compensate
     } else {
-      // N, S, E, W, NE, NW - keep higher crop
+      // All other directions - keep higher crop to avoid tail artifacts
       topCrop = 120;
     }
   }
