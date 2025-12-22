@@ -135,6 +135,7 @@ export function CanvasIsometricGrid({ overlayMode, selectedTile, setSelectedTile
   const isPinchZoomingRef = useRef(false); // Ref for animation loop to check pinch zoom state
   const zoomRef = useRef(isMobile ? 0.6 : 1); // Ref for animation loop to check zoom level
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const panCandidateRef = useRef<{ startX: number; startY: number; gridX: number; gridY: number } | null>(null);
   const [hoveredTile, setHoveredTile] = useState<{ x: number; y: number } | null>(null);
   const [hoveredIncident, setHoveredIncident] = useState<{
     x: number;
@@ -269,6 +270,8 @@ export function CanvasIsometricGrid({ overlayMode, selectedTile, setSelectedTile
   
   // Roads, bulldoze, and other tools support drag-to-place but don't show the grid
   const supportsDragPlace = selectedTool !== 'select';
+
+  const PAN_DRAG_THRESHOLD = 6;
 
   // Use extracted building helpers (with pre-computed tile metadata for O(1) lookups)
   const { isPartOfMultiTileBuilding, findBuildingOrigin, isPartOfParkBuilding, getTileMetadata } = useBuildingHelpers(grid, gridSize);
@@ -3424,6 +3427,7 @@ export function CanvasIsometricGrid({ overlayMode, selectedTile, setSelectedTile
     if (e.button === 1 || (e.button === 0 && e.altKey)) {
       setIsPanning(true);
       setDragStart({ x: e.clientX - offset.x, y: e.clientY - offset.y });
+      panCandidateRef.current = null;
       e.preventDefault();
       return;
     }
@@ -3434,40 +3438,57 @@ export function CanvasIsometricGrid({ overlayMode, selectedTile, setSelectedTile
         const mouseX = (e.clientX - rect.left) / zoom;
         const mouseY = (e.clientY - rect.top) / zoom;
         const { gridX, gridY } = screenToGrid(mouseX, mouseY, offset.x / zoom, offset.y / zoom);
-        
-        if (gridX >= 0 && gridX < gridSize && gridY >= 0 && gridY < gridSize) {
-          if (selectedTool === 'select') {
-            // For multi-tile buildings, select the origin tile
-            const origin = findBuildingOrigin(gridX, gridY);
-            if (origin) {
-              setSelectedTile({ x: origin.originX, y: origin.originY });
-            } else {
-              setSelectedTile({ x: gridX, y: gridY });
-            }
-          } else if (showsDragGrid) {
-            // Start drag rectangle selection for zoning tools
-            setDragStartTile({ x: gridX, y: gridY });
-            setDragEndTile({ x: gridX, y: gridY });
-            setIsDragging(true);
-          } else if (supportsDragPlace) {
-            // For roads, bulldoze, and other tools, start drag-to-place
-            setDragStartTile({ x: gridX, y: gridY });
-            setDragEndTile({ x: gridX, y: gridY });
-            setIsDragging(true);
-            // Reset road drawing state for new drag
-            setRoadDrawDirection(null);
-            placedRoadTilesRef.current.clear();
-            // Place immediately on first click
-            placeAtTile(gridX, gridY);
-            // Track initial tile for roads, rail, and subways
-            if (selectedTool === 'road' || selectedTool === 'rail' || selectedTool === 'subway') {
-              placedRoadTilesRef.current.add(`${gridX},${gridY}`);
-            }
+
+        const isInsideGrid = gridX >= 0 && gridX < gridSize && gridY >= 0 && gridY < gridSize;
+        if (!isInsideGrid) {
+          setIsPanning(true);
+          setDragStart({ x: e.clientX - offset.x, y: e.clientY - offset.y });
+          panCandidateRef.current = null;
+          return;
+        }
+
+        if (selectedTool === 'select') {
+          const tile = grid[gridY]?.[gridX];
+          const isOpenTile = tile?.building.type === 'empty' ||
+            tile?.building.type === 'grass' ||
+            tile?.building.type === 'water';
+          if (isOpenTile) {
+            panCandidateRef.current = { startX: e.clientX, startY: e.clientY, gridX, gridY };
+            return;
+          }
+          panCandidateRef.current = null;
+          // For multi-tile buildings, select the origin tile
+          const origin = findBuildingOrigin(gridX, gridY);
+          if (origin) {
+            setSelectedTile({ x: origin.originX, y: origin.originY });
+          } else {
+            setSelectedTile({ x: gridX, y: gridY });
+          }
+        } else if (showsDragGrid) {
+          panCandidateRef.current = null;
+          // Start drag rectangle selection for zoning tools
+          setDragStartTile({ x: gridX, y: gridY });
+          setDragEndTile({ x: gridX, y: gridY });
+          setIsDragging(true);
+        } else if (supportsDragPlace) {
+          panCandidateRef.current = null;
+          // For roads, bulldoze, and other tools, start drag-to-place
+          setDragStartTile({ x: gridX, y: gridY });
+          setDragEndTile({ x: gridX, y: gridY });
+          setIsDragging(true);
+          // Reset road drawing state for new drag
+          setRoadDrawDirection(null);
+          placedRoadTilesRef.current.clear();
+          // Place immediately on first click
+          placeAtTile(gridX, gridY);
+          // Track initial tile for roads, rail, and subways
+          if (selectedTool === 'road' || selectedTool === 'rail' || selectedTool === 'subway') {
+            placedRoadTilesRef.current.add(`${gridX},${gridY}`);
           }
         }
       }
     }
-  }, [offset, gridSize, selectedTool, placeAtTile, zoom, showsDragGrid, supportsDragPlace, setSelectedTile, findBuildingOrigin]);
+  }, [offset, gridSize, selectedTool, placeAtTile, zoom, showsDragGrid, supportsDragPlace, setSelectedTile, findBuildingOrigin, grid]);
   
   // Calculate camera bounds based on grid size
   const getMapBounds = useCallback((currentZoom: number, canvasW: number, canvasH: number) => {
@@ -3525,6 +3546,23 @@ export function CanvasIsometricGrid({ overlayMode, selectedTile, setSelectedTile
   }, [navigationTarget, zoom, canvasSize.width, canvasSize.height, getMapBounds, onNavigationComplete]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!isPanning && panCandidateRef.current) {
+      const { startX, startY } = panCandidateRef.current;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      if (Math.abs(dx) >= PAN_DRAG_THRESHOLD || Math.abs(dy) >= PAN_DRAG_THRESHOLD) {
+        setIsPanning(true);
+        setDragStart({ x: startX - offset.x, y: startY - offset.y });
+        panCandidateRef.current = null;
+        const newOffset = {
+          x: e.clientX - (startX - offset.x),
+          y: e.clientY - (startY - offset.y),
+        };
+        setOffset(clampOffset(newOffset, zoom));
+        return;
+      }
+    }
+
     if (isPanning) {
       const newOffset = {
         x: e.clientX - dragStart.x,
@@ -3626,6 +3664,18 @@ export function CanvasIsometricGrid({ overlayMode, selectedTile, setSelectedTile
   }, [isPanning, dragStart, offset, zoom, gridSize, isDragging, showsDragGrid, dragStartTile, selectedTool, roadDrawDirection, supportsDragPlace, placeAtTile, clampOffset, grid]);
   
   const handleMouseUp = useCallback(() => {
+    if (panCandidateRef.current && !isPanning && selectedTool === 'select') {
+      const { gridX, gridY } = panCandidateRef.current;
+      panCandidateRef.current = null;
+      const origin = findBuildingOrigin(gridX, gridY);
+      if (origin) {
+        setSelectedTile({ x: origin.originX, y: origin.originY });
+      } else {
+        setSelectedTile({ x: gridX, y: gridY });
+      }
+    } else {
+      panCandidateRef.current = null;
+    }
     // Fill the drag rectangle when mouse is released (only for zoning tools)
     if (isDragging && dragStartTile && dragEndTile && showsDragGrid) {
       const minX = Math.min(dragStartTile.x, dragEndTile.x);
@@ -3664,7 +3714,7 @@ export function CanvasIsometricGrid({ overlayMode, selectedTile, setSelectedTile
     if (!containerRef.current) {
       setHoveredTile(null);
     }
-  }, [isDragging, showsDragGrid, dragStartTile, placeAtTile, selectedTool, dragEndTile, checkAndDiscoverCities]);
+  }, [isDragging, showsDragGrid, dragStartTile, placeAtTile, selectedTool, dragEndTile, checkAndDiscoverCities, findBuildingOrigin, setSelectedTile, isPanning]);
   
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
