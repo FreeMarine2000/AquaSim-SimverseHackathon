@@ -2,7 +2,7 @@
 
 import React, { useRef, useState, useCallback, useEffect, useMemo } from 'react';
 import { useGame } from '@/context/GameContext';
-import { TOOL_INFO, Tile, BuildingType, AdjacentCity } from '@/types/game';
+import { TOOL_INFO, Tile, BuildingType, AdjacentCity, Tool } from '@/types/game';
 import { getBuildingSize, requiresWaterAdjacency, getWaterAdjacency, getRoadAdjacency } from '@/lib/simulation';
 import { FireIcon, SafetyIcon } from '@/components/ui/Icons';
 import { getSpriteCoords, BUILDING_TO_SPRITE, SPRITE_VERTICAL_OFFSETS, SPRITE_HORIZONTAL_OFFSETS, getActiveSpritePack } from '@/lib/renderConfig';
@@ -3080,10 +3080,33 @@ export function CanvasIsometricGrid({ overlayMode, selectedTile, setSelectedTile
       ctx.stroke();
     };
     
-    // Draw hovered tile highlight
+    // Draw hovered tile highlight (with multi-tile preview for buildings)
     if (hoveredTile && hoveredTile.x >= 0 && hoveredTile.x < gridSize && hoveredTile.y >= 0 && hoveredTile.y < gridSize) {
-      const { screenX, screenY } = gridToScreen(hoveredTile.x, hoveredTile.y, 0, 0);
-      drawHighlight(screenX, screenY);
+      // Check if selectedTool is a building type (not a non-building tool)
+      const nonBuildingTools: Tool[] = ['select', 'bulldoze', 'road', 'rail', 'subway', 'tree', 'zone_residential', 'zone_commercial', 'zone_industrial', 'zone_dezone'];
+      const isBuildingTool = selectedTool && !nonBuildingTools.includes(selectedTool);
+      
+      if (isBuildingTool) {
+        // Get building size and draw preview for all tiles in footprint
+        const buildingType = selectedTool as BuildingType;
+        const buildingSize = getBuildingSize(buildingType);
+        
+        // Draw highlight for each tile in the building footprint
+        for (let dx = 0; dx < buildingSize.width; dx++) {
+          for (let dy = 0; dy < buildingSize.height; dy++) {
+            const tx = hoveredTile.x + dx;
+            const ty = hoveredTile.y + dy;
+            if (tx >= 0 && tx < gridSize && ty >= 0 && ty < gridSize) {
+              const { screenX, screenY } = gridToScreen(tx, ty, 0, 0);
+              drawHighlight(screenX, screenY);
+            }
+          }
+        }
+      } else {
+        // Single tile highlight for non-building tools
+        const { screenX, screenY } = gridToScreen(hoveredTile.x, hoveredTile.y, 0, 0);
+        drawHighlight(screenX, screenY);
+      }
     }
     
     // Draw selected tile highlight (including multi-tile buildings)
@@ -3106,7 +3129,7 @@ export function CanvasIsometricGrid({ overlayMode, selectedTile, setSelectedTile
     }
     
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-  }, [hoveredTile, selectedTile, offset, zoom, gridSize, grid]);
+  }, [hoveredTile, selectedTile, selectedTool, offset, zoom, gridSize, grid]);
   
   // Animate decorative car traffic AND emergency vehicles on top of the base canvas
   useEffect(() => {
