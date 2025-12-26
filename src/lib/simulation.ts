@@ -2700,6 +2700,94 @@ function findBuildingOrigin(
   return null;
 }
 
+/**
+ * Find all bridge tiles that are part of the same bridge as the tile at (x, y).
+ * Bridges are connected along their orientation axis (ns or ew).
+ */
+function findConnectedBridgeTiles(
+  grid: Tile[][],
+  gridSize: number,
+  x: number,
+  y: number
+): { x: number; y: number }[] {
+  const tile = grid[y]?.[x];
+  if (!tile || tile.building.type !== 'bridge') return [];
+  
+  const orientation = tile.building.bridgeOrientation || 'ns';
+  const bridgeTiles: { x: number; y: number }[] = [{ x, y }];
+  
+  // Direction vectors based on orientation
+  // NS bridges run along the x-axis (grid rows)
+  // EW bridges run along the y-axis (grid columns)
+  const dx = orientation === 'ns' ? 1 : 0;
+  const dy = orientation === 'ns' ? 0 : 1;
+  
+  // Scan in positive direction
+  let cx = x + dx;
+  let cy = y + dy;
+  while (cx >= 0 && cx < gridSize && cy >= 0 && cy < gridSize) {
+    const t = grid[cy][cx];
+    if (t.building.type === 'bridge' && t.building.bridgeOrientation === orientation) {
+      bridgeTiles.push({ x: cx, y: cy });
+      cx += dx;
+      cy += dy;
+    } else {
+      break;
+    }
+  }
+  
+  // Scan in negative direction
+  cx = x - dx;
+  cy = y - dy;
+  while (cx >= 0 && cx < gridSize && cy >= 0 && cy < gridSize) {
+    const t = grid[cy][cx];
+    if (t.building.type === 'bridge' && t.building.bridgeOrientation === orientation) {
+      bridgeTiles.push({ x: cx, y: cy });
+      cx -= dx;
+      cy -= dy;
+    } else {
+      break;
+    }
+  }
+  
+  return bridgeTiles;
+}
+
+/**
+ * Check if a road tile at (x, y) is adjacent to a bridge start/end tile.
+ * If so, return all the bridge tiles that should be deleted.
+ */
+function findAdjacentBridgeTiles(
+  grid: Tile[][],
+  gridSize: number,
+  x: number,
+  y: number
+): { x: number; y: number }[] {
+  const directions = [
+    { dx: -1, dy: 0 },
+    { dx: 1, dy: 0 },
+    { dx: 0, dy: -1 },
+    { dx: 0, dy: 1 },
+  ];
+  
+  for (const { dx, dy } of directions) {
+    const nx = x + dx;
+    const ny = y + dy;
+    if (nx >= 0 && nx < gridSize && ny >= 0 && ny < gridSize) {
+      const neighbor = grid[ny][nx];
+      if (neighbor.building.type === 'bridge') {
+        const position = neighbor.building.bridgePosition;
+        // Check if this bridge tile is a start or end connected to our road
+        if (position === 'start' || position === 'end') {
+          return findConnectedBridgeTiles(grid, gridSize, nx, ny);
+        }
+      }
+    }
+  }
+  
+  return [];
+}
+
 // Bulldoze a tile (or entire multi-tile building if applicable)
 export function bulldozeTile(state: GameState, x: number, y: number): GameState {
   const tile = state.grid[y]?.[x];
@@ -2708,12 +2796,33 @@ export function bulldozeTile(state: GameState, x: number, y: number): GameState 
 
   const newGrid = state.grid.map(row => row.map(t => ({ ...t, building: { ...t.building } })));
   
-  // Special handling for bridges - restore water instead of grass
+  // Special handling for bridges - delete the entire bridge and restore water
   if (tile.building.type === 'bridge') {
-    newGrid[y][x].building = createBuilding('water');
-    newGrid[y][x].zone = 'none';
-    newGrid[y][x].hasRailOverlay = false;
+    const bridgeTiles = findConnectedBridgeTiles(newGrid, state.gridSize, x, y);
+    for (const bt of bridgeTiles) {
+      newGrid[bt.y][bt.x].building = createBuilding('water');
+      newGrid[bt.y][bt.x].zone = 'none';
+      newGrid[bt.y][bt.x].hasRailOverlay = false;
+    }
     return { ...state, grid: newGrid };
+  }
+  
+  // Special handling for roads - check if adjacent to a bridge start/end
+  if (tile.building.type === 'road') {
+    const adjacentBridgeTiles = findAdjacentBridgeTiles(newGrid, state.gridSize, x, y);
+    if (adjacentBridgeTiles.length > 0) {
+      // Delete the road first
+      newGrid[y][x].building = createBuilding('grass');
+      newGrid[y][x].zone = 'none';
+      newGrid[y][x].hasRailOverlay = false;
+      // Then delete all connected bridge tiles
+      for (const bt of adjacentBridgeTiles) {
+        newGrid[bt.y][bt.x].building = createBuilding('water');
+        newGrid[bt.y][bt.x].zone = 'none';
+        newGrid[bt.y][bt.x].hasRailOverlay = false;
+      }
+      return { ...state, grid: newGrid };
+    }
   }
   
   // Check if this tile is part of a multi-tile building

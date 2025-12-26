@@ -243,11 +243,24 @@ export function buildBridges(
 ): void {
   const variant = getRandomBridgeVariant(opportunity.bridgeType);
   
-  opportunity.waterTiles.forEach((pos, index) => {
+  // Sort waterTiles consistently to ensure same result regardless of drag direction
+  // For NS orientation (bridges going NW-SE in screen): sort by x (grid row), then by y
+  // For EW orientation (bridges going NE-SW in screen): sort by y (grid column), then by x
+  const sortedTiles = [...opportunity.waterTiles].sort((a, b) => {
+    if (opportunity.orientation === 'ns') {
+      // NS bridges: sort by x first (north to south in grid = top-left to bottom-right on screen)
+      return a.x !== b.x ? a.x - b.x : a.y - b.y;
+    } else {
+      // EW bridges: sort by y first (east to west in grid = top-right to bottom-left on screen)
+      return a.y !== b.y ? a.y - b.y : a.x - b.x;
+    }
+  });
+  
+  sortedTiles.forEach((pos, index) => {
     let position: 'start' | 'middle' | 'end';
     if (index === 0) {
       position = 'start';
-    } else if (index === opportunity.waterTiles.length - 1) {
+    } else if (index === sortedTiles.length - 1) {
       position = 'end';
     } else {
       position = 'middle';
