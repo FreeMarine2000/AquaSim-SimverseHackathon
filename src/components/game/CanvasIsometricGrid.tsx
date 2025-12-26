@@ -2037,8 +2037,9 @@ export function CanvasIsometricGrid({ overlayMode, selectedTile, setSelectedTile
             const trackEndX = extendedEndEdge.x + perpX * trackOffset;
             const trackEndY = endY + perpY * trackOffset;
             
-            for (let i = 0; i <= numTies; i++) {
-              const t = i / numTies;
+            // Match railSystem.ts: use (i + 0.5) / numTies to center ties, avoiding edge overlap
+            for (let i = 0; i < numTies; i++) {
+              const t = (i + 0.5) / numTies;
               const tieX = trackStartX + (trackEndX - trackStartX) * t;
               const tieY = trackStartY + (trackEndY - trackStartY) * t;
               
