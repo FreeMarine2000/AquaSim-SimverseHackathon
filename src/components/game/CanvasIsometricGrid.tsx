@@ -2027,7 +2027,11 @@ export function CanvasIsometricGrid({ overlayMode, selectedTile, setSelectedTile
               const config = SERVICE_CONFIG[tile.building.type as keyof typeof SERVICE_CONFIG];
               if (!config || !('range' in config)) continue;
               
-              const range = config.range;
+              // Calculate effective range based on building level (linear 20% increase per level)
+              // Level 1: 100%, Level 2: 120%, Level 3: 140%, Level 4: 160%, Level 5: 180%
+              const baseRange = config.range;
+              const effectiveRange = baseRange * (1 + (tile.building.level - 1) * 0.2);
+              const range = Math.floor(effectiveRange);
               
               // NOTE: For multi-tile service buildings (e.g. 2x2 hospital, 3x3 university),
               // coverage is computed from the building's anchor tile (top-left of footprint)
