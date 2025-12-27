@@ -198,6 +198,7 @@ const QuickToolIcons: Partial<Record<Tool, React.ReactNode>> = {
 const CATEGORY_LABELS: Record<string, unknown> = {
   'TOOLS': msg('Tools'),
   'ZONES': msg('Zones'),
+  'EXPAND_CITY': msg('Expand City'),
   'ZONING': msg('Zoning'),
   'UTILITIES': msg('Utilities'),
   'SERVICES': msg('Services'),
@@ -247,10 +248,11 @@ interface MobileToolbarProps {
 }
 
 export function MobileToolbar({ onOpenPanel, overlayMode = 'none', setOverlayMode }: MobileToolbarProps) {
-  const { state, setTool } = useGame();
+  const { state, setTool, expandCity, shrinkCity } = useGame();
   const { selectedTool, stats } = state;
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
   const [showMenu, setShowMenu] = useState(false);
+  const [expandCityExpanded, setExpandCityExpanded] = useState(false);
   const m = useMessages();
 
   const handleCategoryClick = (category: string) => {
@@ -508,6 +510,48 @@ export function MobileToolbar({ onOpenPanel, overlayMode = 'none', setOverlayMod
                 {/* Category buttons */}
                 {Object.entries(toolCategories).map(([category, tools]) => (
                   <div key={category}>
+                    {/* Expand City section - appears before ZONING */}
+                    {category === 'ZONING' && (
+                      <div className="mb-1">
+                        <Button
+                          variant={expandCityExpanded ? 'secondary' : 'ghost'}
+                          className="w-full justify-start gap-3 h-12"
+                          onClick={() => setExpandCityExpanded(!expandCityExpanded)}
+                        >
+                          <span className="flex-1 text-left font-medium">{m((CATEGORY_LABELS['EXPAND_CITY']) as Parameters<typeof m>[0])}</span>
+                          <svg
+                            className={`w-4 h-4 transition-transform ${expandCityExpanded ? 'rotate-180' : ''}`}
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                          >
+                            <path d="M6 9l6 6 6-6" />
+                          </svg>
+                        </Button>
+
+                        {/* Expand City actions */}
+                        {expandCityExpanded && (
+                          <div className="pl-4 py-1 space-y-0.5">
+                            <Button
+                              variant="ghost"
+                              className="w-full justify-start gap-3 h-11"
+                              onClick={() => { expandCity(); setShowMenu(false); }}
+                            >
+                              <span className="flex-1 text-left">{m(TOOL_INFO['expand_city'].name)}</span>
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              className="w-full justify-start gap-3 h-11"
+                              onClick={() => { shrinkCity(); setShowMenu(false); }}
+                            >
+                              <span className="flex-1 text-left">{m(TOOL_INFO['shrink_city'].name)}</span>
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     <Button
                       variant={expandedCategory === category ? 'secondary' : 'ghost'}
                       className="w-full justify-start gap-3 h-12"
