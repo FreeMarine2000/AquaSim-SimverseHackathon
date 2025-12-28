@@ -89,17 +89,14 @@ export async function loadGameRoom(
   roomCode: string
 ): Promise<{ gameState: GameState; cityName: string } | null> {
   try {
-    console.log('[Database] Loading room:', roomCode.toUpperCase());
-    const { data, error, status } = await supabase
+    const { data, error } = await supabase
       .from('game_rooms')
       .select('game_state, city_name')
       .eq('room_code', roomCode.toUpperCase())
       .single();
 
-    console.log('[Database] Response status:', status, 'error:', error?.message, 'hasData:', !!data);
-    
     if (error || !data) {
-      console.error('[Database] Failed to load room:', error?.message, 'code:', error?.code, 'status:', status);
+      console.error('[Database] Failed to load room:', error);
       return null;
     }
 

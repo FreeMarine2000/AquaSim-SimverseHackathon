@@ -23,11 +23,12 @@ export function ShareModal({ open, onOpenChange }: ShareModalProps) {
   const [isCreating, setIsCreating] = useState(false);
   
   const { roomCode, createRoom } = useMultiplayer();
-  const { state } = useGame();
+  const { state, isStateReady } = useGame();
 
   // Create room when modal opens (if not already in a room)
+  // IMPORTANT: Wait for isStateReady to ensure we have the loaded state, not the default empty state
   useEffect(() => {
-    if (open && !roomCode && !isCreating) {
+    if (open && !roomCode && !isCreating && isStateReady) {
       setIsCreating(true);
       createRoom(state.cityName, state)
         .then((code) => {
@@ -41,7 +42,7 @@ export function ShareModal({ open, onOpenChange }: ShareModalProps) {
           setIsCreating(false);
         });
     }
-  }, [open, roomCode, isCreating, createRoom, state]);
+  }, [open, roomCode, isCreating, isStateReady, createRoom, state]);
 
   // Reset copied state when modal closes
   useEffect(() => {

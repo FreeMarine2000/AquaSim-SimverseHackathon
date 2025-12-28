@@ -11,7 +11,7 @@ import { getSpritePack, getSpriteCoords, DEFAULT_SPRITE_PACK_ID } from '@/lib/re
 import { SavedCityMeta, GameState } from '@/types/game';
 import { decompressFromUTF16, compressToUTF16 } from 'lz-string';
 import { LanguageSelector } from '@/components/ui/LanguageSelector';
-import { Users } from 'lucide-react';
+import { Users, X } from 'lucide-react';
 
 const STORAGE_KEY = 'isocity-game-state';
 const SAVED_CITIES_INDEX_KEY = 'isocity-saved-cities-index';
@@ -274,28 +274,42 @@ function SpriteGallery({ count = 16, cols = 4, cellSize = 120 }: { count?: numbe
 }
 
 // Saved City Card Component
-function SavedCityCard({ city, onLoad }: { city: SavedCityMeta; onLoad: () => void }) {
+function SavedCityCard({ city, onLoad, onDelete }: { city: SavedCityMeta; onLoad: () => void; onDelete?: () => void }) {
   return (
-    <button
-      onClick={onLoad}
-      className="w-full text-left p-3 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-none transition-all duration-200 group"
-    >
-      <div className="flex items-center gap-2">
-        <h3 className="text-white font-medium truncate group-hover:text-white/90 text-sm flex-1">
-          {city.cityName}
-        </h3>
-        {city.roomCode && (
-          <span className="text-xs px-1.5 py-0.5 bg-blue-500/20 text-blue-300 rounded">
-            Co-op
-          </span>
-        )}
-      </div>
-      <div className="flex items-center gap-3 mt-1 text-xs text-white/50">
-        <span>Pop: {city.population.toLocaleString()}</span>
-        <span>${city.money.toLocaleString()}</span>
-        {city.roomCode && <span className="text-blue-400/60">{city.roomCode}</span>}
-      </div>
-    </button>
+    <div className="relative group">
+      <button
+        onClick={onLoad}
+        className="w-full text-left p-3 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-none transition-all duration-200"
+      >
+        <div className="flex items-center gap-2">
+          <h3 className="text-white font-medium truncate group-hover:text-white/90 text-sm flex-1">
+            {city.cityName}
+          </h3>
+          {city.roomCode && (
+            <span className="text-xs px-1.5 py-0.5 bg-blue-500/20 text-blue-300 rounded">
+              Co-op
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-3 mt-1 text-xs text-white/50">
+          <span>Pop: {city.population.toLocaleString()}</span>
+          <span>${city.money.toLocaleString()}</span>
+          {city.roomCode && <span className="text-blue-400/60">{city.roomCode}</span>}
+        </div>
+      </button>
+      {onDelete && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete();
+          }}
+          className="absolute bottom-2 right-2 p-1 opacity-0 group-hover:opacity-100 hover:bg-red-500/20 text-white/40 hover:text-red-400 rounded transition-all duration-200"
+          title="Delete city"
+        >
+          <X className="w-3.5 h-3.5" />
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -305,6 +319,7 @@ export default function HomePage() {
   const [showGame, setShowGame] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
   const [savedCities, setSavedCities] = useState<SavedCityMeta[]>([]);
+  const [hasSaved, setHasSaved] = useState(false);
   const [showCoopModal, setShowCoopModal] = useState(false);
   const [isMultiplayer, setIsMultiplayer] = useState(false);
   const [startFreshGame, setStartFreshGame] = useState(false);
@@ -317,6 +332,7 @@ export default function HomePage() {
     const checkSavedGame = () => {
       setIsChecking(false);
       setSavedCities(loadSavedCities());
+      setHasSaved(hasSavedGame());
       
       // Check for room code in URL (legacy format) - redirect to new format
       const params = new URLSearchParams(window.location.search);
@@ -325,9 +341,9 @@ export default function HomePage() {
         // Redirect to new /coop/XXXXX format
         window.location.replace(`/coop/${roomCode.toUpperCase()}`);
         return;
-      } else if (hasSavedGame()) {
-        setShowGame(true);
       }
+      // Always show landing page - don't auto-load into game
+      // User can select from saved cities or start new
     };
     // Use requestAnimationFrame to avoid synchronous setState in effect
     requestAnimationFrame(checkSavedGame);
@@ -339,6 +355,7 @@ export default function HomePage() {
     setIsMultiplayer(false);
     setStartFreshGame(false);
     setSavedCities(loadSavedCities());
+    setHasSaved(hasSavedGame());
     // Clear room code from URL
     window.history.replaceState({}, '', '/');
   };
@@ -362,6 +379,23 @@ export default function HomePage() {
       }
     } catch {
       console.error('Failed to load saved city');
+    }
+  };
+
+  // Delete a saved city from the index
+  const deleteSavedCity = (city: SavedCityMeta) => {
+    try {
+      // Remove from saved cities index
+      const updatedCities = savedCities.filter(c => c.id !== city.id);
+      localStorage.setItem(SAVED_CITIES_INDEX_KEY, JSON.stringify(updatedCities));
+      setSavedCities(updatedCities);
+      
+      // Also remove the city state data if it exists
+      if (!city.roomCode) {
+        localStorage.removeItem(SAVED_CITY_PREFIX + city.id);
+      }
+    } catch {
+      console.error('Failed to delete saved city');
     }
   };
 
@@ -454,7 +488,7 @@ export default function HomePage() {
               onClick={() => setShowGame(true)}
               className="w-full py-6 text-xl font-light tracking-wide bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-none transition-all duration-300"
             >
-              Start
+              {hasSaved ? 'Continue' : 'New Game'}
             </Button>
             
             <Button 
@@ -512,6 +546,7 @@ export default function HomePage() {
                     key={city.id}
                     city={city}
                     onLoad={() => loadSavedCity(city)}
+                    onDelete={() => deleteSavedCity(city)}
                   />
                 ))}
               </div>
@@ -546,7 +581,7 @@ export default function HomePage() {
                 onClick={() => setShowGame(true)}
                 className="w-64 py-8 text-2xl font-light tracking-wide bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-none transition-all duration-300"
               >
-                Start
+                {hasSaved ? 'Continue' : 'New Game'}
               </Button>
               <Button 
                 onClick={() => setShowCoopModal(true)}
@@ -602,6 +637,7 @@ export default function HomePage() {
                       key={city.id}
                       city={city}
                       onLoad={() => loadSavedCity(city)}
+                      onDelete={() => deleteSavedCity(city)}
                     />
                   ))}
                 </div>

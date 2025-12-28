@@ -78,6 +78,7 @@ type GameContextValue = {
   expandCity: () => void;
   shrinkCity: () => boolean;
   hasExistingGame: boolean;
+  isStateReady: boolean; // True when initial state loading is complete
   isSaving: boolean;
   addMoney: (amount: number) => void;
   addNotification: (title: string, description: string, icon: string) => void;
@@ -647,6 +648,7 @@ export function GameProvider({ children, startFresh = false }: { children: React
   const [state, setState] = useState<GameState>(() => createInitialGameState(DEFAULT_GRID_SIZE, 'IsoCity'));
   
   const [hasExistingGame, setHasExistingGame] = useState(false);
+  const [isStateReady, setIsStateReady] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const skipNextSaveRef = useRef(false);
@@ -696,6 +698,8 @@ export function GameProvider({ children, startFresh = false }: { children: React
     }
     // Mark as loaded immediately - the skipNextSaveRef will handle skipping the first save
     hasLoadedRef.current = true;
+    // Mark state as ready - consumers should wait for this before using state
+    setIsStateReady(true);
   }, [startFresh]);
   
   // Track the state that needs to be saved
@@ -1632,6 +1636,7 @@ export function GameProvider({ children, startFresh = false }: { children: React
     expandCity,
     shrinkCity,
     hasExistingGame,
+    isStateReady,
     isSaving,
     addMoney,
     addNotification,
