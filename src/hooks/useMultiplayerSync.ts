@@ -3,21 +3,12 @@
 import { useEffect, useCallback, useRef } from 'react';
 import { useMultiplayerOptional } from '@/context/MultiplayerContext';
 import { useGame } from '@/context/GameContext';
-import { useMobile } from '@/hooks/useMobile';
 import { GameAction, GameActionInput } from '@/lib/multiplayer/types';
 import { Tool, Budget, GameState, SavedCityMeta } from '@/types/game';
 
 // Batch placement buffer for reducing message count during drags
 const BATCH_FLUSH_INTERVAL = 100; // ms - flush every 100ms during drag
-const BATCH_FLUSH_INTERVAL_MOBILE = 200; // ms - slower flush on mobile
 const BATCH_MAX_SIZE = 100; // Max placements before force flush
-const BATCH_MAX_SIZE_MOBILE = 50; // Smaller batches on mobile
-
-// State sync throttle intervals
-const STATE_SYNC_INTERVAL = 2000; // ms - sync every 2 seconds on desktop
-const STATE_SYNC_INTERVAL_MOBILE = 4000; // ms - slower sync on mobile (4 seconds)
-const STATE_SYNC_INTERVAL_LARGE_CITY = 5000; // ms - even slower for large cities (5 seconds)
-const LARGE_CITY_THRESHOLD = 10000; // Population threshold for "large city"
 
 // Storage key for saved cities index (matches page.tsx)
 const SAVED_CITIES_INDEX_KEY = 'isocity-saved-cities-index';
@@ -69,8 +60,6 @@ function updateSavedCitiesIndex(state: GameState, roomCode: string): void {
 export function useMultiplayerSync() {
   const multiplayer = useMultiplayerOptional();
   const game = useGame();
-  const { isMobileDevice, isSmallScreen } = useMobile();
-  const isMobile = isMobileDevice || isSmallScreen;
   const lastActionRef = useRef<string | null>(null);
   const initialStateLoadedRef = useRef(false);
   
@@ -226,10 +215,6 @@ export function useMultiplayerSync() {
       return;
     }
     
-    // Use mobile-specific batch settings
-    const batchMaxSize = isMobile ? BATCH_MAX_SIZE_MOBILE : BATCH_MAX_SIZE;
-    const batchFlushInterval = isMobile ? BATCH_FLUSH_INTERVAL_MOBILE : BATCH_FLUSH_INTERVAL;
-    
     game.setPlaceCallback(({ x, y, tool }: { x: number; y: number; tool: Tool }) => {
       if (tool === 'bulldoze') {
         // Bulldoze is sent immediately (not batched)
@@ -240,14 +225,14 @@ export function useMultiplayerSync() {
         placementBufferRef.current.push({ x, y, tool });
         
         // Force flush if batch is large
-        if (placementBufferRef.current.length >= batchMaxSize) {
+        if (placementBufferRef.current.length >= BATCH_MAX_SIZE) {
           flushPlacements();
         } else if (!flushTimeoutRef.current) {
           // Schedule flush after interval
           flushTimeoutRef.current = setTimeout(() => {
             flushTimeoutRef.current = null;
             flushPlacements();
-          }, batchFlushInterval);
+          }, BATCH_FLUSH_INTERVAL);
         }
       }
     });
@@ -257,7 +242,7 @@ export function useMultiplayerSync() {
       flushPlacements();
       game.setPlaceCallback(null);
     };
-  }, [multiplayer, multiplayer?.connectionState, game, flushPlacements, isMobile]);
+  }, [multiplayer, multiplayer?.connectionState, game, flushPlacements]);
 
   // Register callback to broadcast bridge creation
   useEffect(() => {
@@ -284,19 +269,7 @@ export function useMultiplayerSync() {
     if (!multiplayer || multiplayer.connectionState !== 'connected') return;
     
     const now = Date.now();
-    
-    // Calculate throttle interval based on device and city size
-    // Large cities on mobile get the slowest sync to reduce lag
-    const population = game.state.stats?.population || 0;
-    const isLargeCity = population > LARGE_CITY_THRESHOLD;
-    let syncInterval = STATE_SYNC_INTERVAL;
-    if (isMobile && isLargeCity) {
-      syncInterval = STATE_SYNC_INTERVAL_LARGE_CITY;
-    } else if (isMobile) {
-      syncInterval = STATE_SYNC_INTERVAL_MOBILE;
-    }
-    
-    if (now - lastUpdateRef.current < syncInterval) return;
+    if (now - lastUpdateRef.current < 2000) return; // Throttle to 2 second intervals
     lastUpdateRef.current = now;
     
     // Update the game state - provider will save to Supabase database (throttled)
@@ -307,7 +280,7 @@ export function useMultiplayerSync() {
       lastIndexUpdateRef.current = now;
       updateSavedCitiesIndex(game.state, multiplayer.roomCode);
     }
-  }, [multiplayer, game.state, isMobile]);
+  }, [multiplayer, game.state]);
 
   // Broadcast a local action to peers
   const broadcastAction = useCallback((action: GameActionInput) => {
