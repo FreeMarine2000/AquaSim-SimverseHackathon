@@ -408,6 +408,7 @@ export interface SavedCityMeta {
   month: number;
   gridSize: number;
   savedAt: number; // timestamp
+  roomCode?: string; // For multiplayer cities - allows rejoining
 }
 
 // Building evolution paths based on zone and level

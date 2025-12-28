@@ -4,11 +4,50 @@ import { useEffect, useCallback, useRef } from 'react';
 import { useMultiplayerOptional } from '@/context/MultiplayerContext';
 import { useGame } from '@/context/GameContext';
 import { GameAction, GameActionInput } from '@/lib/multiplayer/types';
-import { Tool, Budget } from '@/types/game';
+import { Tool, Budget, GameState, SavedCityMeta } from '@/types/game';
 
 // Batch placement buffer for reducing message count during drags
 const BATCH_FLUSH_INTERVAL = 100; // ms - flush every 100ms during drag
 const BATCH_MAX_SIZE = 100; // Max placements before force flush
+
+// Storage key for saved cities index (matches page.tsx)
+const SAVED_CITIES_INDEX_KEY = 'isocity-saved-cities-index';
+
+// Update the saved cities index with the current multiplayer city state
+function updateSavedCitiesIndex(state: GameState, roomCode: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    // Load existing cities
+    const saved = localStorage.getItem(SAVED_CITIES_INDEX_KEY);
+    const cities: SavedCityMeta[] = saved ? JSON.parse(saved) : [];
+    
+    // Create updated city meta
+    const cityMeta: SavedCityMeta = {
+      id: state.id || `city-${Date.now()}`,
+      cityName: state.cityName || 'Co-op City',
+      population: state.stats.population,
+      money: state.stats.money,
+      year: state.year,
+      month: state.month,
+      gridSize: state.gridSize,
+      savedAt: Date.now(),
+      roomCode: roomCode,
+    };
+    
+    // Find and update or add
+    const existingIndex = cities.findIndex(c => c.roomCode === roomCode);
+    if (existingIndex >= 0) {
+      cities[existingIndex] = cityMeta;
+    } else {
+      cities.unshift(cityMeta);
+    }
+    
+    // Keep only the last 20 cities and save
+    localStorage.setItem(SAVED_CITIES_INDEX_KEY, JSON.stringify(cities.slice(0, 20)));
+  } catch (e) {
+    console.error('Failed to update saved cities index:', e);
+  }
+}
 
 /**
  * Hook to sync game actions with multiplayer.
@@ -223,7 +262,9 @@ export function useMultiplayerSync() {
 
   // Keep the game state synced with the Supabase database
   // The provider handles throttling internally (saves every 3 seconds max)
+  // Also updates the local saved cities index so the city appears on the homepage
   const lastUpdateRef = useRef<number>(0);
+  const lastIndexUpdateRef = useRef<number>(0);
   useEffect(() => {
     if (!multiplayer || multiplayer.connectionState !== 'connected') return;
     
@@ -233,6 +274,12 @@ export function useMultiplayerSync() {
     
     // Update the game state - provider will save to Supabase database (throttled)
     multiplayer.updateGameState(game.state);
+    
+    // Also update the local saved cities index (less frequently - every 10 seconds)
+    if (multiplayer.roomCode && now - lastIndexUpdateRef.current > 10000) {
+      lastIndexUpdateRef.current = now;
+      updateSavedCitiesIndex(game.state, multiplayer.roomCode);
+    }
   }, [multiplayer, game.state]);
 
   // Broadcast a local action to peers

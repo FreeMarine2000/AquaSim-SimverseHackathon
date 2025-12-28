@@ -21,7 +21,7 @@ import { T, useGT, Plural, Var } from 'gt-next';
 interface CoopModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onStartGame: (isHost: boolean, initialState?: GameState) => void;
+  onStartGame: (isHost: boolean, initialState?: GameState, roomCode?: string) => void;
   currentGameState?: GameState;
   pendingRoomCode?: string | null;
 }
@@ -109,7 +109,7 @@ export function CoopModal({
       window.history.replaceState({}, '', `/?room=${code}`);
       
       // Start the game immediately with the state and close the modal
-      onStartGame(true, stateToShare);
+      onStartGame(true, stateToShare, code);
       onOpenChange(false);
     } catch (err) {
       console.error('Failed to create room:', err);
@@ -142,10 +142,12 @@ export function CoopModal({
   useEffect(() => {
     if (waitingForState && initialState) {
       setWaitingForState(false);
-      onStartGame(false, initialState);
+      // Use the room code from context, joinCode, or pendingRoomCode
+      const code = roomCode || joinCode.toUpperCase() || pendingRoomCode?.toUpperCase();
+      onStartGame(false, initialState, code || undefined);
       onOpenChange(false);
     }
-  }, [waitingForState, initialState, onStartGame, onOpenChange]);
+  }, [waitingForState, initialState, onStartGame, onOpenChange, roomCode, joinCode, pendingRoomCode]);
   
   // Timeout after 15 seconds - if no state received, show error
   useEffect(() => {

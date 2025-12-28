@@ -111,6 +111,47 @@ function loadSavedCities(): SavedCityMeta[] {
   return [];
 }
 
+// Save a city to the saved cities index (for multiplayer cities)
+function saveCityToIndex(state: GameState, roomCode?: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const cities = loadSavedCities();
+    
+    // Create city meta
+    const cityMeta: SavedCityMeta = {
+      id: state.id || `city-${Date.now()}`,
+      cityName: state.cityName || 'Co-op City',
+      population: state.stats.population,
+      money: state.stats.money,
+      year: state.year,
+      month: state.month,
+      gridSize: state.gridSize,
+      savedAt: Date.now(),
+      roomCode: roomCode,
+    };
+    
+    // Check if city already exists (by id or roomCode)
+    const existingIndex = cities.findIndex(c => 
+      c.id === cityMeta.id || (roomCode && c.roomCode === roomCode)
+    );
+    
+    if (existingIndex >= 0) {
+      // Update existing entry
+      cities[existingIndex] = cityMeta;
+    } else {
+      // Add new entry at the beginning
+      cities.unshift(cityMeta);
+    }
+    
+    // Keep only the last 20 cities
+    const trimmed = cities.slice(0, 20);
+    
+    localStorage.setItem(SAVED_CITIES_INDEX_KEY, JSON.stringify(trimmed));
+  } catch (e) {
+    console.error('Failed to save city to index:', e);
+  }
+}
+
 // Sprite Gallery component that renders sprites using canvas (like SpriteTestPanel)
 function SpriteGallery({ count = 16, cols = 4, cellSize = 120 }: { count?: number; cols?: number; cellSize?: number }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -239,12 +280,20 @@ function SavedCityCard({ city, onLoad }: { city: SavedCityMeta; onLoad: () => vo
       onClick={onLoad}
       className="w-full text-left p-3 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-none transition-all duration-200 group"
     >
-      <h3 className="text-white font-medium truncate group-hover:text-white/90 text-sm">
-        {city.cityName}
-      </h3>
+      <div className="flex items-center gap-2">
+        <h3 className="text-white font-medium truncate group-hover:text-white/90 text-sm flex-1">
+          {city.cityName}
+        </h3>
+        {city.roomCode && (
+          <span className="text-xs px-1.5 py-0.5 bg-blue-500/20 text-blue-300 rounded">
+            Co-op
+          </span>
+        )}
+      </div>
       <div className="flex items-center gap-3 mt-1 text-xs text-white/50">
         <span>Pop: {city.population.toLocaleString()}</span>
         <span>${city.money.toLocaleString()}</span>
+        {city.roomCode && <span className="text-blue-400/60">{city.roomCode}</span>}
       </div>
     </button>
   );
@@ -295,9 +344,18 @@ export default function HomePage() {
   };
 
   // Load a saved city
-  const loadSavedCity = (cityId: string) => {
+  const loadSavedCity = (city: SavedCityMeta) => {
+    // If it's a multiplayer city, navigate to the room
+    if (city.roomCode) {
+      window.history.replaceState({}, '', `/?room=${city.roomCode}`);
+      setPendingRoomCode(city.roomCode);
+      setShowCoopModal(true);
+      return;
+    }
+    
+    // Otherwise load from local storage
     try {
-      const saved = localStorage.getItem(SAVED_CITY_PREFIX + cityId);
+      const saved = localStorage.getItem(SAVED_CITY_PREFIX + city.id);
       if (saved) {
         localStorage.setItem(STORAGE_KEY, saved);
         setShowGame(true);
@@ -308,7 +366,7 @@ export default function HomePage() {
   };
 
   // Handle co-op game start
-  const handleCoopStart = (isHost: boolean, initialState?: GameState) => {
+  const handleCoopStart = (isHost: boolean, initialState?: GameState, roomCode?: string) => {
     setIsMultiplayer(true);
     
     if (isHost && initialState) {
@@ -316,6 +374,11 @@ export default function HomePage() {
       try {
         const compressed = compressToUTF16(JSON.stringify(initialState));
         localStorage.setItem(STORAGE_KEY, compressed);
+        
+        // Also save to saved cities index so it appears on homepage
+        if (roomCode) {
+          saveCityToIndex(initialState, roomCode);
+        }
       } catch (e) {
         console.error('Failed to save co-op state:', e);
       }
@@ -328,6 +391,11 @@ export default function HomePage() {
       try {
         const compressed = compressToUTF16(JSON.stringify(initialState));
         localStorage.setItem(STORAGE_KEY, compressed);
+        
+        // Also save to saved cities index so it appears on homepage
+        if (roomCode) {
+          saveCityToIndex(initialState, roomCode);
+        }
       } catch (e) {
         console.error('Failed to save co-op state:', e);
       }
@@ -443,7 +511,7 @@ export default function HomePage() {
                   <SavedCityCard
                     key={city.id}
                     city={city}
-                    onLoad={() => loadSavedCity(city.id)}
+                    onLoad={() => loadSavedCity(city)}
                   />
                 ))}
               </div>
@@ -533,7 +601,7 @@ export default function HomePage() {
                     <SavedCityCard
                       key={city.id}
                       city={city}
-                      onLoad={() => loadSavedCity(city.id)}
+                      onLoad={() => loadSavedCity(city)}
                     />
                   ))}
                 </div>

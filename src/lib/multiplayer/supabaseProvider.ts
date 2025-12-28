@@ -49,6 +49,7 @@ export class MultiplayerProvider {
   private players: Map<string, Player> = new Map();
   private gameState: GameState | null = null;
   private destroyed = false;
+  private hasReceivedInitialState = false; // Prevent multiple state-sync overwrites
   
   // State save throttling
   private lastStateSave = 0;
@@ -88,6 +89,8 @@ export class MultiplayerProvider {
 
     // If creating a room, save initial state to database
     if (this.isCreator && this.gameState) {
+      // Creator has the canonical state - mark as already received
+      this.hasReceivedInitialState = true;
       const success = await createGameRoom(
         this.roomCode,
         this.options.cityName,
@@ -105,6 +108,8 @@ export class MultiplayerProvider {
         throw new Error(msg('Room not found'));
       }
       this.gameState = roomData.gameState;
+      // Note: We do NOT set hasReceivedInitialState here because we want to
+      // receive state-sync from existing players (which will have fresher state)
       // Notify that we received state from the database
       this.options.onStateReceived?.(roomData.gameState);
     }
@@ -182,9 +187,15 @@ export class MultiplayerProvider {
       })
       // Broadcast: state sync from existing players (for new joiners)
       .on('broadcast', { event: 'state-sync' }, ({ payload }) => {
-        const { state, to } = payload as { state: GameState; to: string; from: string };
-        // Only process if it's for us
-        if (to === this.peerId && state && this.options.onStateReceived) {
+        const { state, to, from } = payload as { state: GameState; to: string; from: string };
+        // Only process if:
+        // 1. It's meant for us
+        // 2. We're NOT the creator (creators have the canonical state, should never be overwritten)
+        // 3. We haven't already received initial state (prevent multiple overwrites)
+        // 4. It's not from ourselves (extra safety)
+        // 5. State is valid
+        if (to === this.peerId && !this.isCreator && !this.hasReceivedInitialState && from !== this.peerId && state && this.options.onStateReceived) {
+          this.hasReceivedInitialState = true;
           this.gameState = state;
           this.options.onStateReceived(state);
         }
