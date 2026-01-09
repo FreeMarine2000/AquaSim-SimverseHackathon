@@ -245,6 +245,13 @@ export function CanvasIsometricGrid({ overlayMode, selectedTile, setSelectedTile
   // Performance: Cache road merge analysis (expensive calculation done per-road-tile)
   const roadAnalysisCacheRef = useRef<Map<string, ReturnType<typeof analyzeMergedRoad>>>(new Map());
   const roadAnalysisCacheVersionRef = useRef(-1);
+  
+  // Water animation phase (updated in the animated entities loop)
+  const waterAnimOffsetRef = useRef(0);
+  // Per-tile water animation state (tint fade, fish popup)
+  const waterTileAnimMap = useRef<Map<number, { last: number; tintAlpha: number; fishAlpha: number; fishRise: number }>>(new Map());
+  // Water flow speed (seconds -> phase multiplier) - tweak this for overall flow rate
+  const WATER_FLOW_SPEED = 0.6;
 
   // PERF: Cache background gradient - only recreate when canvas height changes
   const bgGradientCacheRef = useRef<{ gradient: CanvasGradient | null; height: number }>({ gradient: null, height: 0 });
@@ -1141,8 +1148,24 @@ export function CanvasIsometricGrid({ overlayMode, selectedTile, setSelectedTile
       const hasGreyBase = tileRenderMetadata?.needsGreyBase ?? false;
       
       if (tile.building.type === 'water') {
-        topColor = '#2563eb';
-        strokeColor = '#1e3a8a';
+        if (tile.pollution > 50) {
+          if (tile.pollutionType === 'toxic') {
+            topColor = '#8e44ad';
+            strokeColor = '#6b2d86';
+          } else if (tile.pollutionType === 'nutrient') {
+            topColor = '#2ecc71';
+            strokeColor = '#15803d';
+          } else if (tile.pollutionType === 'thermal') {
+            topColor = '#1abc9c';
+            strokeColor = '#0f766e';
+          } else {
+            topColor = '#60a5fa';
+            strokeColor = '#1e3a8a';
+          }
+        } else {
+          topColor = '#60a5fa';
+          strokeColor = '#1e3a8a';
+        }
       } else if (tile.building.type === 'road' || tile.building.type === 'bridge') {
         topColor = '#4a4a4a';
         strokeColor = '#333';
@@ -1235,6 +1258,110 @@ export function CanvasIsometricGrid({ overlayMode, selectedTile, setSelectedTile
     
     // Helper function to draw water tile at a given screen position
     // Used for marina/pier buildings that sit on water
+    
+    // Procedural water renderer: draws layered sine-wave highlights into the
+    // current clipping region. Designed to replace static water image crops
+    // with runtime-generated waveforms for smoother, varied animation.
+    function drawProceduralWater(
+      ctx: CanvasRenderingContext2D,
+      destX: number,
+      destY: number,
+      destW: number,
+      destH: number,
+      seedX: number,
+      seedY: number,
+      phase: number,
+      pollution: number = 0,
+      pollutionType: string | null = null
+    ) {
+      ctx.save();
+
+      // Base gradient for depth — flatten/dull when polluted
+      const grad = ctx.createLinearGradient(destX, destY, destX, destY + destH);
+      if (pollution && pollution > 0) {
+        // Polluted: darker, slightly desaturated blue
+        const dirtyTop = '#4b7a95';
+        const dirtyBottom = '#0f3f56';
+        grad.addColorStop(0, dirtyTop);
+        grad.addColorStop(1, dirtyBottom);
+      } else {
+        grad.addColorStop(0, '#66bdf6');
+        grad.addColorStop(1, '#0f4f76');
+      }
+      ctx.fillStyle = grad;
+      ctx.fillRect(destX, destY, destW, destH);
+
+      // Wave layers - tuned for smoother, more natural flow (amplitudes/frequencies)
+      const layers = [
+        { amp: destH * 0.08, freq: 0.9 + seedX * 0.8, speed: 0.6, alpha: 0.14, width: 1.6 },
+        { amp: destH * 0.04, freq: 1.8 + seedY * 1.2, speed: 1.2, alpha: 0.09, width: 1.0 },
+        { amp: destH * 0.018, freq: 3.6, speed: 1.9, alpha: 0.05, width: 0.6 },
+      ];
+
+      // Draw each layer as a stroked sine curve across the destination rect
+      for (let li = 0; li < layers.length; li++) {
+        const layer = layers[li];
+        ctx.beginPath();
+        const step = Math.max(2, Math.floor(destW / 80));
+        for (let px = 0; px <= destW; px += step) {
+          const norm = px / destW;
+          const theta = norm * Math.PI * 2 * layer.freq;
+          const y = Math.sin(theta + phase * layer.speed + seedX * 3.14 + seedY) * layer.amp + destY + destH * 0.45;
+          if (px === 0) ctx.moveTo(destX + px, y);
+          else ctx.lineTo(destX + px, y);
+        }
+        ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+        ctx.lineWidth = layer.width;
+        ctx.globalAlpha = layer.alpha;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+      }
+
+      // Very subtle specular highlights using low-alpha smooth strokes
+      ctx.globalAlpha = 0.045;
+      ctx.strokeStyle = 'rgba(255,255,255,1)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      const highlightSteps = Math.max(3, Math.floor(destW / 160));
+      for (let i = 0; i < highlightSteps; i++) {
+        const offset = (i / highlightSteps) * destW * 0.5;
+        ctx.moveTo(destX + offset, destY + destH * 0.2 + Math.sin(phase * 0.8 + i) * destH * 0.02);
+        ctx.lineTo(destX + offset + destW * 0.4, destY + destH * 0.2 + Math.sin(phase * 0.8 + i) * destH * 0.02);
+      }
+      ctx.stroke();
+
+      ctx.restore();
+    }
+    
+    // Simple dead-fish sprite drawn procedurally (small, low-detail)
+    function drawDeadFish(ctx: CanvasRenderingContext2D, centerX: number, centerY: number, size: number, alpha: number, rise: number) {
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.translate(centerX, centerY - rise);
+      // body
+      ctx.fillStyle = '#6b6b6b';
+      ctx.beginPath();
+      ctx.ellipse(0, 0, size * 0.6, size * 0.35, -0.4, 0, Math.PI * 2);
+      ctx.fill();
+      // tail
+      ctx.fillStyle = '#505050';
+      ctx.beginPath();
+      ctx.moveTo(-size * 0.6, 0);
+      ctx.lineTo(-size * 0.95, -size * 0.25);
+      ctx.lineTo(-size * 0.95, size * 0.25);
+      ctx.closePath();
+      ctx.fill();
+      // eye (X)
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = Math.max(1, size * 0.07);
+      ctx.beginPath();
+      ctx.moveTo(size * 0.25, -size * 0.05);
+      ctx.lineTo(size * 0.33, size * 0.05);
+      ctx.moveTo(size * 0.33, -size * 0.05);
+      ctx.lineTo(size * 0.25, size * 0.05);
+      ctx.stroke();
+      ctx.restore();
+    }
     function drawWaterTileAt(ctx: CanvasRenderingContext2D, screenX: number, screenY: number, gridX: number, gridY: number) {
       const waterImage = getCachedImage(WATER_ASSET_PATH);
       if (!waterImage) return;
@@ -1251,15 +1378,24 @@ export function CanvasIsometricGrid({ overlayMode, selectedTile, setSelectedTile
       // Deterministic "random" offset based on tile position
       const seedX = ((gridX * 7919 + gridY * 6271) % 1000) / 1000;
       const seedY = ((gridX * 4177 + gridY * 9311) % 1000) / 1000;
-      
+
       // Take a subcrop for variety
       const cropScale = 0.35;
       const cropW = imgW * cropScale;
       const cropH = imgH * cropScale;
-      const maxOffsetX = imgW - cropW;
-      const maxOffsetY = imgH - cropH;
-      const srcX = seedX * maxOffsetX;
-      const srcY = seedY * maxOffsetY;
+      const maxOffsetX = Math.max(1, imgW - cropW);
+      const maxOffsetY = Math.max(1, imgH - cropH);
+
+      // Time-based phase for smooth animation
+      const t = performance.now() / 1000;
+      const phase = t * WATER_FLOW_SPEED + (gridX * 0.37 + gridY * 0.29);
+
+      // Subpixel sinusoidal offsets for smooth flow
+      const animOffsetX = Math.sin(phase) * (maxOffsetX * 0.06);
+      const animOffsetY = Math.cos(phase * 1.17) * (maxOffsetY * 0.12);
+
+      const srcX = (seedX * maxOffsetX + animOffsetX + maxOffsetX) % maxOffsetX;
+      const srcY = (seedY * maxOffsetY + animOffsetY + maxOffsetY) % maxOffsetY;
       
       ctx.save();
       // Clip to isometric diamond shape
@@ -1275,20 +1411,82 @@ export function CanvasIsometricGrid({ overlayMode, selectedTile, setSelectedTile
       const jitterX = (seedX - 0.5) * w * 0.3;
       const jitterY = (seedY - 0.5) * h * 0.3;
       
-      // Draw water with slight transparency
+      // Draw procedural water waveform instead of static image crop
       const destWidth = w * 1.15;
-      const destHeight = destWidth * aspectRatio;
+      const destHeight = destWidth * (cropH / cropW);
+      const destX = Math.round(tileCenterX - destWidth / 2 + jitterX * 0.3);
+      const destY = Math.round(tileCenterY - destHeight / 2 + jitterY * 0.3);
+
+      // Per-tile animation state (tint fade, fish popup)
+      const key = gridY * worldStateRef.current.gridSize + gridX;
+      const now = performance.now() / 1000;
+      const anim = waterTileAnimMap.current.get(key) ?? { last: now, tintAlpha: 0, fishAlpha: 0, fishRise: 0 };
+      const dt = Math.max(0, now - (anim.last || now));
+      anim.last = now;
+
+      // Determine desired tint based on pollution
+      const tile = grid[gridY]?.[gridX];
+      const poll = tile?.pollution ?? 0;
+      const pollType = tile?.pollutionType ?? null;
+
+      // Target tint alpha (slower fade towards target)
+      const targetAlpha = poll > 50 ? Math.min(0.6, ((poll - 50) / 100) * 0.6 + 0.05) : 0;
+      // Smooth approach: lerp with rate dependent on dt
+      const lerp = (a: number, b: number, t: number) => a + (b - a) * (1 - Math.exp(-5 * t));
+      anim.tintAlpha = lerp(anim.tintAlpha, targetAlpha, dt);
+
+      // Fish for nutrient pollution: appear slowly when nutrient pollution high
+      if (pollType === 'nutrient' && poll > 60) {
+        anim.fishAlpha = lerp(anim.fishAlpha, Math.min(1, (poll - 60) / 40), dt * 0.6);
+        anim.fishRise = lerp(anim.fishRise, Math.min(10, (poll - 60) / 40 * 10), dt * 0.6);
+      } else {
+        anim.fishAlpha = lerp(anim.fishAlpha, 0, dt * 0.8);
+        anim.fishRise = lerp(anim.fishRise, 0, dt * 0.8);
+      }
+
+      waterTileAnimMap.current.set(key, anim);
+
+      // Draw base procedural water — pass pollution to flatten base if polluted
+      drawProceduralWater(ctx, destX, destY, destWidth, destHeight, seedX, seedY, phase, poll, pollType);
+
+      // Subtle parallax overlay pass for extra motion
+      try {
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = 0.08;
+        drawProceduralWater(ctx, Math.round(tileCenterX - destWidth / 2 + jitterX * 0.6), Math.round(tileCenterY - destHeight / 2 + jitterY * 0.6), destWidth, destHeight, seedX + 0.5, seedY + 0.5, phase * 1.3, poll, pollType);
+      } finally {
+        ctx.restore();
+      }
       
-      ctx.globalAlpha = 0.95;
-      ctx.drawImage(
-        waterImage,
-        srcX, srcY, cropW, cropH,
-        Math.round(tileCenterX - destWidth / 2 + jitterX * 0.3),
-        Math.round(tileCenterY - destHeight / 2 + jitterY * 0.3),
-        Math.round(destWidth),
-        Math.round(destHeight)
-      );
-      
+      // Overlay pollution tint if present (use animated tintAlpha)
+      if (poll > 50 || anim.tintAlpha > 0.001) {
+        let tintColor = '#60a5fa';
+        if (pollType === 'toxic') tintColor = '#4b7a95'; // dirtier blue for toxic
+        else if (pollType === 'nutrient') tintColor = '#9fe7ff'; // lighter blue for nutrient
+        else if (pollType === 'thermal') tintColor = '#1abc9c';
+
+        ctx.save();
+        ctx.globalCompositeOperation = 'source-atop';
+        ctx.globalAlpha = anim.tintAlpha;
+        ctx.fillStyle = tintColor;
+        // Fill diamond
+        ctx.beginPath();
+        ctx.moveTo(screenX + w / 2, screenY);
+        ctx.lineTo(screenX + w, screenY + h / 2);
+        ctx.lineTo(screenX + w / 2, screenY + h);
+        ctx.lineTo(screenX, screenY + h / 2);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+
+        // If nutrient pollution, draw dead fish popping up slowly
+        if (pollType === 'nutrient' && anim.fishAlpha > 0.01) {
+          const fishSize = Math.max(6, TILE_WIDTH * 0.18);
+          drawDeadFish(ctx, screenX + w / 2, screenY + h / 2, fishSize, anim.fishAlpha, anim.fishRise);
+        }
+      }
+
       ctx.restore();
     }
     
@@ -1361,15 +1559,24 @@ export function CanvasIsometricGrid({ overlayMode, selectedTile, setSelectedTile
             // Deterministic "random" offset based on tile position
             const seedX = ((gridX * 7919 + gridY * 6271) % 1000) / 1000;
             const seedY = ((gridX * 4177 + gridY * 9311) % 1000) / 1000;
-            
+
             // Take a subcrop - use 35% of the image, offset randomly for variety
             const cropScale = 0.35;
             const cropW = imgW * cropScale;
             const cropH = imgH * cropScale;
-            const maxOffsetX = imgW - cropW;
-            const maxOffsetY = imgH - cropH;
-            const srcX = seedX * maxOffsetX;
-            const srcY = seedY * maxOffsetY;
+            const maxOffsetX = Math.max(1, imgW - cropW);
+            const maxOffsetY = Math.max(1, imgH - cropH);
+
+            // Time-based phase for smooth animation
+            const t = performance.now() / 1000;
+            const phase = t * WATER_FLOW_SPEED + (gridX * 0.37 + gridY * 0.29);
+
+            // Subpixel sinusoidal offsets for smooth flow
+            const animOffsetX = Math.sin(phase) * (maxOffsetX * 0.06);
+            const animOffsetY = Math.cos(phase * 1.17) * (maxOffsetY * 0.12);
+
+            const srcX = (seedX * maxOffsetX + animOffsetX + maxOffsetX) % maxOffsetX;
+            const srcY = (seedY * maxOffsetY + animOffsetY + maxOffsetY) % maxOffsetY;
             
             // Create a clipping path - expand toward adjacent WATER tiles only
             // This allows blending between water tiles while preventing bleed onto land
@@ -1411,64 +1618,95 @@ export function CanvasIsometricGrid({ overlayMode, selectedTile, setSelectedTile
             // PERF: When zoomed out (zoom < 0.5), use single pass water rendering to reduce draw calls
             // At low zoom, the blending detail is not visible anyway
             if (zoom < 0.5) {
-              // Simplified single-pass water at low zoom
+              // Simplified single-pass water at low zoom (procedural)
               const destWidth = w * 1.15;
               const destHeight = destWidth * aspectRatio;
-              ctx.globalAlpha = 0.9;
-              ctx.drawImage(
-                waterImage,
-                srcX, srcY, cropW, cropH,
-                Math.round(tileCenterX - destWidth / 2),
-                Math.round(tileCenterY - destHeight / 2),
-                Math.round(destWidth),
-                Math.round(destHeight)
-              );
+              drawProceduralWater(ctx, Math.round(tileCenterX - destWidth / 2), Math.round(tileCenterY - destHeight / 2), destWidth, destHeight, seedX, seedY, phase);
             } else if (adjacentCount >= 2) {
-              // Two passes: large soft outer, smaller solid core
-              // Outer pass - large, semi-transparent for blending
+              // Two passes: large soft outer, smaller solid core (procedural)
               const outerScale = 2.0 + adjacentCount * 0.3;
               const outerWidth = w * outerScale;
               const outerHeight = outerWidth * aspectRatio;
               ctx.globalAlpha = 0.35;
-              ctx.drawImage(
-                waterImage,
-                srcX, srcY, cropW, cropH,
-                Math.round(tileCenterX - outerWidth / 2 + jitterX),
-                Math.round(tileCenterY - outerHeight / 2 + jitterY),
-                Math.round(outerWidth),
-                Math.round(outerHeight)
-              );
+              drawProceduralWater(ctx, Math.round(tileCenterX - outerWidth / 2 + jitterX), Math.round(tileCenterY - outerHeight / 2 + jitterY), outerWidth, outerHeight, seedX, seedY, phase * 0.9);
               
               // Core pass - full opacity
               const coreScale = 1.1;
               const coreWidth = w * coreScale;
               const coreHeight = coreWidth * aspectRatio;
               ctx.globalAlpha = 0.9;
-              ctx.drawImage(
-                waterImage,
-                srcX, srcY, cropW, cropH,
-                Math.round(tileCenterX - coreWidth / 2 + jitterX * 0.5),
-                Math.round(tileCenterY - coreHeight / 2 + jitterY * 0.5),
-                Math.round(coreWidth),
-                Math.round(coreHeight)
-              );
+              drawProceduralWater(ctx, Math.round(tileCenterX - coreWidth / 2 + jitterX * 0.5), Math.round(tileCenterY - coreHeight / 2 + jitterY * 0.5), coreWidth, coreHeight, seedX + 0.2, seedY + 0.1, phase * 1.2);
             } else {
               // Edge tile with few water neighbors - single contained draw
               const destWidth = w * 1.15;
               const destHeight = destWidth * aspectRatio;
-              
-              ctx.globalAlpha = 0.95;
-              ctx.drawImage(
-                waterImage,
-                srcX, srcY, cropW, cropH,
-                Math.round(tileCenterX - destWidth / 2 + jitterX * 0.3),
-                Math.round(tileCenterY - destHeight / 2 + jitterY * 0.3),
-                Math.round(destWidth),
-                Math.round(destHeight)
-              );
+              drawProceduralWater(ctx, Math.round(tileCenterX - destWidth / 2 + jitterX * 0.3), Math.round(tileCenterY - destHeight / 2 + jitterY * 0.3), destWidth, destHeight, seedX, seedY, phase);
             }
             
+            // Subtle parallax overlay pass to enhance flow (low alpha, lighter blend)
+            try {
+              ctx.save();
+              ctx.globalCompositeOperation = 'lighter';
+              ctx.globalAlpha = 0.07;
+              const overlayWidth = w * 1.18;
+              const overlayHeight = overlayWidth * (cropH / cropW);
+              drawProceduralWater(ctx, Math.round(tileCenterX - overlayWidth / 2 + jitterX * 0.6), Math.round(tileCenterY - overlayHeight / 2 + jitterY * 0.6), overlayWidth, overlayHeight, seedX + 0.6, seedY + 0.4, phase * 1.3);
+            } finally {
+              ctx.restore();
+            }
+
             ctx.globalAlpha = savedAlpha;
+
+            // Overlay pollution tint for water tiles (animated per-tile)
+            const tilePoll = tile.pollution;
+            const tileType = tile.pollutionType ?? null;
+            const key = tile.y * worldStateRef.current.gridSize + tile.x;
+            const now = performance.now() / 1000;
+            const anim = waterTileAnimMap.current.get(key) ?? { last: now, tintAlpha: 0, fishAlpha: 0, fishRise: 0 };
+            const dt = Math.max(0, now - (anim.last || now));
+            anim.last = now;
+
+            // Target alpha and smoothing (same approach as single-tile draw)
+            const targetAlpha = tilePoll > 50 ? Math.min(0.6, ((tilePoll - 50) / 100) * 0.6 + 0.05) : 0;
+            const lerp = (a: number, b: number, t: number) => a + (b - a) * (1 - Math.exp(-5 * t));
+            anim.tintAlpha = lerp(anim.tintAlpha, targetAlpha, dt);
+
+            // Nutrient fish anim
+            if (tileType === 'nutrient' && tilePoll > 60) {
+              anim.fishAlpha = lerp(anim.fishAlpha, Math.min(1, (tilePoll - 60) / 40), dt * 0.6);
+              anim.fishRise = lerp(anim.fishRise, Math.min(10, (tilePoll - 60) / 40 * 10), dt * 0.6);
+            } else {
+              anim.fishAlpha = lerp(anim.fishAlpha, 0, dt * 0.8);
+              anim.fishRise = lerp(anim.fishRise, 0, dt * 0.8);
+            }
+
+            waterTileAnimMap.current.set(key, anim);
+
+            if (tilePoll > 50 || anim.tintAlpha > 0.001) {
+              let tintColor = '#60a5fa';
+              if (tileType === 'toxic') tintColor = '#4b7a95';
+              else if (tileType === 'nutrient') tintColor = '#9fe7ff';
+              else if (tileType === 'thermal') tintColor = '#1abc9c';
+
+              ctx.save();
+              ctx.globalCompositeOperation = 'source-atop';
+              ctx.globalAlpha = anim.tintAlpha;
+              ctx.fillStyle = tintColor;
+              ctx.beginPath();
+              ctx.moveTo(x + w / 2, y);
+              ctx.lineTo(x + w, y + h / 2);
+              ctx.lineTo(x + w / 2, y + h);
+              ctx.lineTo(x, y + h / 2);
+              ctx.closePath();
+              ctx.fill();
+              ctx.restore();
+
+              if (tileType === 'nutrient' && anim.fishAlpha > 0.01) {
+                const fishSize = Math.max(6, TILE_WIDTH * 0.18);
+                drawDeadFish(ctx, x + w / 2, y + h / 2, fishSize, anim.fishAlpha, anim.fishRise);
+              }
+            }
+
             ctx.restore();
           } else {
             // Water image not loaded yet - draw placeholder diamond
@@ -1538,7 +1776,8 @@ export function CanvasIsometricGrid({ overlayMode, selectedTile, setSelectedTile
               const isMultiTile = buildingSize.width > 1 || buildingSize.height > 1;
               
               // Calculate draw position for multi-tile buildings
-              let drawPosX = x;
+              let drawPosX = x
+              ;
               let drawPosY = y;
               
               if (isMultiTile) {
@@ -2442,6 +2681,9 @@ export function CanvasIsometricGrid({ overlayMode, selectedTile, setSelectedTile
             }
           }
         }
+        // Update water animation offset (controls sub-crop offset for water texture)
+        // Scaled by delta so animation speed is frame-rate independent
+        waterAnimOffsetRef.current = (waterAnimOffsetRef.current + delta * 30) % 100000;
       }
       // PERF: Skip drawing animated elements during mobile panning/zooming for better performance
       const skipAnimatedElements = isMobile && (isPanningRef.current || isPinchZoomingRef.current);
@@ -2617,7 +2859,7 @@ export function CanvasIsometricGrid({ overlayMode, selectedTile, setSelectedTile
     
     // Clamp and set the new offset - this is a legitimate use case for responding to navigation requests
     const bounds = getMapBounds(zoom, canvasSize.width, canvasSize.height);
-    setOffset({ // eslint-disable-line
+    setOffset({
       x: Math.max(bounds.minOffsetX, Math.min(bounds.maxOffsetX, newOffset.x)),
       y: Math.max(bounds.minOffsetY, Math.min(bounds.maxOffsetY, newOffset.y)),
     });
