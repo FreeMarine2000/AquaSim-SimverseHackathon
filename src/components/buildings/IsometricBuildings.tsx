@@ -956,5 +956,4 @@ export const BuildingRenderer: React.FC<{
     </div>
   );
 };
-
 export default BuildingRenderer;
